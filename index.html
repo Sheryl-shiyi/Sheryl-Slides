@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Rise of AI Skills</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================
+   CSS CUSTOM PROPERTIES (BOLD SIGNAL THEME)
+   =========================================== */
+:root {
+    --bg-primary: #1a1a1a;
+    --bg-gradient: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+    --card-bg: #FF5722;
+    --card-bg-alt: #E64A19;
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255,255,255,0.55);
+    --text-on-card: #1a1a1a;
+    --accent: #FF5722;
+    --accent-dim: rgba(255,87,34,0.15);
+    --accent-glow: rgba(255,87,34,0.3);
+
+    --font-display: 'Archivo Black', sans-serif;
+    --font-body: 'Space Grotesk', sans-serif;
+    --title-size: clamp(1.5rem, 5vw, 4rem);
+    --h2-size: clamp(1.25rem, 3.5vw, 2.5rem);
+    --h3-size: clamp(1rem, 2.5vw, 1.75rem);
+    --body-size: clamp(0.75rem, 1.5vw, 1.125rem);
+    --small-size: clamp(0.65rem, 1vw, 0.875rem);
+    --slide-padding: clamp(1rem, 4vw, 4rem);
+    --content-gap: clamp(0.5rem, 2vw, 2rem);
+    --element-gap: clamp(0.25rem, 1vw, 1rem);
+
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --duration-normal: 0.6s;
+}
+
+/* ===========================================
+   BASE STYLES
+   =========================================== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* --- VIEWPORT BASE (MANDATORY) --- */
+html, body {
+    height: 100%;
+    overflow-x: hidden;
+}
+html {
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+}
+.slide {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+.slide-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-height: 100%;
+    overflow: hidden;
+    padding: var(--slide-padding);
+}
+.card, .container, .content-box {
+    max-width: min(90vw, 1000px);
+    max-height: min(80vh, 700px);
+}
+.feature-list, .bullet-list { gap: clamp(0.4rem, 1vh, 1rem); }
+.feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.4; }
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+    gap: clamp(0.5rem, 1.5vw, 1rem);
+}
+img, .image-container {
+    max-width: 100%;
+    max-height: min(50vh, 400px);
+    object-fit: contain;
+}
+
+@media (max-height: 700px) {
+    :root {
+        --slide-padding: clamp(0.75rem, 3vw, 2rem);
+        --content-gap: clamp(0.4rem, 1.5vw, 1rem);
+        --title-size: clamp(1.25rem, 4.5vw, 2.5rem);
+        --h2-size: clamp(1rem, 3vw, 1.75rem);
+    }
+}
+@media (max-height: 600px) {
+    :root {
+        --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem);
+        --content-gap: clamp(0.3rem, 1vw, 0.75rem);
+        --title-size: clamp(1.1rem, 4vw, 2rem);
+        --body-size: clamp(0.7rem, 1.2vw, 0.95rem);
+    }
+    .nav-dots, .keyboard-hint, .decorative { display: none; }
+}
+@media (max-height: 500px) {
+    :root {
+        --slide-padding: clamp(0.4rem, 2vw, 1rem);
+        --title-size: clamp(1rem, 3.5vw, 1.5rem);
+        --h2-size: clamp(0.9rem, 2.5vw, 1.25rem);
+        --body-size: clamp(0.65rem, 1vw, 0.85rem);
+    }
+}
+@media (max-width: 600px) {
+    :root { --title-size: clamp(1.25rem, 7vw, 2.5rem); }
+    .grid { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.2s !important;
+    }
+    html { scroll-behavior: auto; }
+}
+
+/* ===========================================
+   BOLD SIGNAL SLIDE STYLES
+   =========================================== */
+body {
+    font-family: var(--font-body);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.slide {
+    background: var(--bg-gradient);
+    padding: clamp(20px, 3.5vw, 48px);
+}
+
+/* === SLIDE HEADER === */
+.slide-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: clamp(12px, 2vw, 24px);
+    flex-shrink: 0;
+}
+.slide-number {
+    font-family: var(--font-display);
+    font-size: clamp(11px, 1.3vw, 16px);
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.1em;
+}
+.slide-nav {
+    font-size: clamp(9px, 1vw, 12px);
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    display: flex;
+    gap: clamp(6px, 1vw, 12px);
+}
+.slide-nav .active { color: var(--accent); }
+
+/* === BOLD CARD === */
+.bold-card {
+    background: var(--card-bg);
+    border-radius: clamp(10px, 1.5vw, 20px);
+    padding: clamp(20px, 3.5vw, 48px);
+    color: var(--text-on-card);
+    position: relative;
+    overflow: hidden;
+}
+.bold-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: clamp(80px, 15vw, 200px);
+    height: clamp(80px, 15vw, 200px);
+    background: rgba(0,0,0,0.06);
+    border-radius: 50%;
+    transform: translate(30%, -30%);
+}
+.bold-card h2 {
+    font-family: var(--font-display);
+    font-size: var(--h2-size);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    position: relative;
+}
+.bold-card p {
+    font-size: var(--body-size);
+    font-weight: 500;
+    opacity: 0.85;
+    line-height: 1.5;
+    margin-top: clamp(8px, 1.5vw, 16px);
+}
+
+/* === DARK CARD (inverted) === */
+.dark-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: clamp(10px, 1.5vw, 20px);
+    padding: clamp(16px, 3vw, 40px);
+}
+.dark-card h3 {
+    font-family: var(--font-display);
+    font-size: var(--h3-size);
+    color: var(--text-primary);
+    margin-bottom: clamp(6px, 1vw, 12px);
+}
+
+/* === TWO-COLUMN LAYOUT === */
+.two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(16px, 3vw, 40px);
+    flex: 1;
+    align-items: center;
+}
+@media (max-width: 700px) {
+    .two-col { grid-template-columns: 1fr; }
+}
+
+/* === TIMELINE === */
+.timeline-item {
+    display: flex;
+    gap: clamp(10px, 2vw, 20px);
+    align-items: flex-start;
+    margin-bottom: clamp(8px, 1.5vh, 16px);
+}
+.timeline-dot {
+    width: clamp(8px, 1vw, 12px);
+    height: clamp(8px, 1vw, 12px);
+    background: var(--accent);
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: clamp(4px, 0.6vw, 8px);
+}
+.timeline-dot.dim { background: rgba(255,87,34,0.35); }
+.timeline-date {
+    font-size: var(--small-size);
+    font-weight: 600;
+    color: var(--accent);
+    min-width: clamp(60px, 8vw, 90px);
+    flex-shrink: 0;
+}
+.timeline-text {
+    font-size: var(--body-size);
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+.timeline-text strong { color: var(--text-primary); font-weight: 600; }
+
+/* === FEATURE GRID === */
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(10px, 2vw, 20px);
+    flex: 1;
+    align-content: center;
+}
+@media (max-width: 800px) {
+    .feature-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 500px) {
+    .feature-grid { grid-template-columns: 1fr; }
+}
+.feature-cell {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: clamp(8px, 1vw, 14px);
+    padding: clamp(14px, 2.5vw, 28px);
+}
+.feature-cell .icon {
+    font-size: clamp(20px, 3vw, 36px);
+    margin-bottom: clamp(6px, 1vw, 12px);
+}
+.feature-cell h3 {
+    font-family: var(--font-display);
+    font-size: clamp(0.7rem, 1.3vw, 1rem);
+    margin-bottom: clamp(4px, 0.6vw, 8px);
+}
+.feature-cell p {
+    font-size: var(--small-size);
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* === QUOTE BLOCK === */
+.quote-block {
+    border-left: 3px solid var(--accent);
+    padding-left: clamp(16px, 2.5vw, 32px);
+    margin: clamp(12px, 2vw, 24px) 0;
+}
+.quote-block p {
+    font-size: clamp(0.9rem, 1.8vw, 1.35rem);
+    font-weight: 300;
+    line-height: 1.6;
+    color: var(--text-primary);
+    font-style: italic;
+}
+.quote-attr {
+    font-size: var(--small-size);
+    color: var(--text-secondary);
+    margin-top: clamp(8px, 1vw, 12px);
+    font-style: normal;
+}
+
+/* === SECTION LABEL === */
+.section-label {
+    font-size: clamp(9px, 1vw, 12px);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: clamp(8px, 1.5vw, 16px);
+}
+
+/* === SLIDE TITLE === */
+.slide-title {
+    font-family: var(--font-display);
+    font-size: var(--title-size);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: clamp(8px, 1.5vw, 16px);
+}
+.slide-subtitle {
+    font-size: var(--body-size);
+    color: var(--text-secondary);
+    line-height: 1.6;
+    max-width: 50ch;
+}
+
+/* === ACCENT DOT === */
+.accent-dot {
+    width: clamp(6px, 0.7vw, 10px);
+    height: clamp(6px, 0.7vw, 10px);
+    background: var(--accent);
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* === FOOTER === */
+.slide-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: clamp(9px, 0.9vw, 12px);
+    color: rgba(255,255,255,0.2);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding-top: clamp(8px, 1vw, 14px);
+    flex-shrink: 0;
+    margin-top: auto;
+}
+
+/* === CODE BLOCK === */
+.code-block {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: clamp(6px, 1vw, 12px);
+    padding: clamp(12px, 2vw, 24px);
+    font-family: 'Space Mono', 'Courier New', monospace;
+    font-size: clamp(0.6rem, 1.1vw, 0.9rem);
+    line-height: 1.6;
+    color: rgba(255,255,255,0.8);
+    overflow: hidden;
+}
+.code-block .keyword { color: #FF5722; }
+.code-block .string { color: #8BC34A; }
+.code-block .comment { color: rgba(255,255,255,0.3); }
+
+/* === COMPARISON TABLE === */
+.compare-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(12px, 2vw, 24px);
+    margin-bottom: clamp(8px, 1.2vw, 14px);
+}
+.compare-cell {
+    background: rgba(255,255,255,0.03);
+    border-radius: clamp(6px, 1vw, 10px);
+    padding: clamp(10px, 1.8vw, 20px);
+    border: 1px solid rgba(255,255,255,0.06);
+}
+.compare-cell.highlight {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+}
+.compare-cell .label {
+    font-size: var(--small-size);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-secondary);
+    margin-bottom: clamp(4px, 0.5vw, 8px);
+}
+.compare-cell .value {
+    font-family: var(--font-display);
+    font-size: clamp(0.8rem, 1.4vw, 1.1rem);
+}
+
+/* === KEY NUMBER === */
+.key-number {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 5vw, 4.5rem);
+    color: var(--accent);
+    line-height: 1;
+}
+.key-number-label {
+    font-size: var(--body-size);
+    color: var(--text-secondary);
+    margin-top: clamp(4px, 0.5vw, 8px);
+}
+
+/* === PILL TAGS === */
+.pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(6px, 1vw, 10px);
+    margin-top: clamp(8px, 1.5vw, 16px);
+}
+.pill {
+    padding: clamp(4px, 0.7vw, 8px) clamp(10px, 1.5vw, 18px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 100px;
+    font-size: var(--small-size);
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+}
+.pill.accent {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* === ANIMATIONS === */
+.reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity var(--duration-normal) var(--ease-out-expo),
+                transform var(--duration-normal) var(--ease-out-expo);
+}
+.slide.visible .reveal { opacity: 1; transform: translateY(0); }
+.reveal:nth-child(1) { transition-delay: 0.1s; }
+.reveal:nth-child(2) { transition-delay: 0.2s; }
+.reveal:nth-child(3) { transition-delay: 0.3s; }
+.reveal:nth-child(4) { transition-delay: 0.4s; }
+.reveal:nth-child(5) { transition-delay: 0.5s; }
+.reveal:nth-child(6) { transition-delay: 0.6s; }
+
+.reveal-left {
+    opacity: 0;
+    transform: translateX(-40px);
+    transition: opacity var(--duration-normal) var(--ease-out-expo),
+                transform var(--duration-normal) var(--ease-out-expo);
+}
+.slide.visible .reveal-left { opacity: 1; transform: translateX(0); }
+
+.reveal-right {
+    opacity: 0;
+    transform: translateX(40px);
+    transition: opacity var(--duration-normal) var(--ease-out-expo),
+                transform var(--duration-normal) var(--ease-out-expo);
+}
+.slide.visible .reveal-right { opacity: 1; transform: translateX(0); }
+
+.reveal-scale {
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity var(--duration-normal) var(--ease-out-expo),
+                transform var(--duration-normal) var(--ease-out-expo);
+}
+.slide.visible .reveal-scale { opacity: 1; transform: scale(1); }
+
+/* === PROGRESS BAR === */
+.progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    background: var(--accent);
+    z-index: 9999;
+    transition: width 0.3s ease;
+}
+
+/* === NAV DOTS === */
+.nav-dots {
+    position: fixed;
+    right: clamp(12px, 2vw, 24px);
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: clamp(6px, 0.8vw, 10px);
+    z-index: 9998;
+}
+.nav-dot {
+    width: clamp(6px, 0.7vw, 10px);
+    height: clamp(6px, 0.7vw, 10px);
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    padding: 0;
+}
+.nav-dot.active {
+    background: var(--accent);
+    transform: scale(1.4);
+}
+
+/* === INLINE EDITING === */
+.edit-hotzone {
+    position: fixed;
+    top: 0; left: 0;
+    width: 80px; height: 80px;
+    z-index: 10000;
+    cursor: pointer;
+}
+.edit-toggle {
+    position: fixed;
+    top: clamp(12px, 2vw, 20px);
+    left: clamp(12px, 2vw, 20px);
+    background: var(--card-bg);
+    color: var(--text-on-card);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 10001;
+}
+.edit-toggle.show, .edit-toggle.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+.edit-banner {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: var(--card-bg);
+    color: var(--text-on-card);
+    text-align: center;
+    padding: 6px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    z-index: 9999;
+    transform: translateY(-100%);
+    transition: transform 0.3s ease;
+}
+.edit-banner.active { transform: translateY(0); }
+
+body.edit-active [contenteditable] {
+    outline: 2px dashed rgba(255,87,34,0.4);
+    outline-offset: 4px;
+    cursor: text;
+}
+body.edit-active [contenteditable]:focus {
+    outline-color: var(--accent);
+}
+</style>
+</head>
+<body>
+
+<!-- Progress Bar -->
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- Nav Dots -->
+<nav class="nav-dots" id="navDots"></nav>
+
+<!-- Edit Controls -->
+<div class="edit-hotzone" id="editHotzone"></div>
+<button class="edit-toggle" id="editToggle">✏️ Edit</button>
+<div class="edit-banner" id="editBanner">EDIT MODE — Click any text to edit · Ctrl+S to save file</div>
+
+<!-- ===========================================
+     SLIDE 01: TITLE
+     =========================================== -->
+<section class="slide" data-nav="Intro">
+    <div class="slide-header">
+        <div class="slide-number reveal">01</div>
+        <div class="slide-nav reveal">
+            <span class="active">INTRO</span>
+            <span>ORIGINS</span>
+            <span>EVOLUTION</span>
+            <span>TODAY</span>
+            <span>IMPACT</span>
+        </div>
+    </div>
+    <div class="slide-content">
+        <div class="two-col">
+            <div class="bold-card reveal-left" style="transition-delay:0.15s">
+                <h2>The Rise of AI Skills</h2>
+                <p>How modular capabilities are reshaping what AI agents can do — and why it matters for your team.</p>
+            </div>
+            <div class="reveal-right" style="transition-delay:0.3s">
+                <div class="section-label">Educational Series</div>
+                <div class="slide-title" style="font-size:var(--h2-size)">From Concept to Enterprise Standard</div>
+                <p class="slide-subtitle" style="margin-top:clamp(12px,2vw,20px)">A visual guide for leaders navigating the new landscape of AI capabilities.</p>
+                <div class="pill-row" style="margin-top:clamp(12px,2vw,20px)">
+                    <span class="pill">17 Slides</span>
+                    <span class="pill">May 2026</span>
+                    <span class="pill accent">For Leaders</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.5s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span>→ Arrow keys or scroll to navigate</span>
+    </div>
+</section>
+
+<!-- ===========================================
+     SLIDE 02: AGENDA
+     =========================================== -->
+<section class="slide" data-nav="Agenda">
+    <div class="slide-header">
+        <div class="slide-number reveal">02</div>
+        <div class="slide-nav reveal"><span>INTRO</span><span class="active">AGENDA</span><span>ORIGINS</span><span>EVOLUTION</span><span>TODAY</span></div>
+    </div>
+    <div class="slide-content">
+        <div class="section-label reveal">What We'll Cover</div>
+        <h2 class="slide-title reveal">Agenda</h2>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:clamp(10px,2vw,20px);margin-top:clamp(16px,2.5vw,28px)">
+            <div class="dark-card reveal" style="transition-delay:0.2s">
+                <div style="display:flex;align-items:baseline;gap:clamp(8px,1.2vw,14px)">
+                    <span style="font-family:var(--font-display);color:var(--accent);font-size:clamp(1.2rem,2vw,1.8rem)">01</span>
+                    <div><h3 style="font-size:clamp(0.8rem,1.3vw,1rem)">What is an AI Skill?</h3><p style="font-size:var(--small-size);color:var(--text-secondary);margin-top:4px">The concept, simplified</p></div>
+                </div>
+            </div>
+            <div class="dark-card reveal" style="transition-delay:0.3s">
+                <div style="display:flex;align-items:baseline;gap:clamp(8px,1.2vw,14px)">
+                    <span style="font-family:var(--font-display);color:var(--accent);font-size:clamp(1.2rem,2vw,1.8rem)">02</span>
+                    <div><h3 style="font-size:clamp(0.8rem,1.3vw,1rem)">Origins & Pioneers</h3><p style="font-size:var(--small-size);color:var(--text-secondary);margin-top:4px">Who started it all</p></div>
+                </div>
+            </div>
+            <div class="dark-card reveal" style="transition-delay:0.4s">
+                <div style="display:flex;align-items:baseline;gap:clamp(8px,1.2vw,14px)">
+                    <span style="font-family:var(--font-display);color:var(--accent);font-size:clamp(1.2rem,2vw,1.8rem)">03</span>
+                    <div><h3 style="font-size:clamp(0.8rem,1.3vw,1rem)">The Evolution</h3><p style="font-size:var(--small-size);color:var(--text-secondary);margin-top:4px">Plugins → Functions → Skills</p></div>
+                </div>
+            </div>
+            <div class="dark-card reveal" style="transition-delay:0.5s">
+                <div style="display:flex;align-items:baseline;gap:clamp(8px,1.2vw,14px)">
+                    <span style="font-family:var(--font-display);color:var(--accent);font-size:clamp(1.2rem,2vw,1.8rem)">04</span>
+                    <div><h3 style="font-size:clamp(0.8rem,1.3vw,1rem)">Where We Are Now</h3><p style="font-size:var(--small-size);color:var(--text-secondary);margin-top:4px">The skills ecosystem in 2026</p></div>
+                </div>
+            </div>
+            <div class="dark-card reveal" style="transition-delay:0.6s;grid-column:1 / -1">
+                <div style="display:flex;align-items:baseline;gap:clamp(8px,1.2vw,14px)">
+                    <span style="font-family:var(--font-display);color:var(--accent);font-size:clamp(1.2rem,2vw,1.8rem)">05</span>
+                    <div><h3 style="font-size:clamp(0.8rem,1.3vw,1rem)">Red Hat: Skills for the Enterprise</h3><p style="font-size:var(--small-size);color:var(--text-secondary);margin-top:4px">A case study in enterprise adoption</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.6s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span>02 / 17</span>
+    </div>
+</section>
+
+<!-- ===========================================
+     SLIDE 03: WHAT IS AN AI SKILL?
+     =========================================== -->
+<section class="slide" data-nav="Concept">
+    <div class="slide-header">
+        <div class="slide-number reveal">03</div>
+        <div class="slide-nav reveal"><span>INTRO</span><span class="active">CONCEPT</span><span>ORIGINS</span><span>EVOLUTION</span><span>TODAY</span></div>
+    </div>
+    <div class="slide-content">
+        <div class="two-col">
+            <div>
+                <div class="section-label reveal">The Basics</div>
+                <h2 class="slide-title reveal">What Is an AI Skill?</h2>
+                <p class="slide-subtitle reveal" style="margin-top:clamp(10px,1.5vw,18px)">Think of skills as <strong style="color:var(--accent)">apps for AI agents</strong>. Just like your phone becomes more useful with each app you install, AI agents become more capable with each skill they learn.</p>
+                <div class="quote-block reveal" style="margin-top:clamp(14px,2vw,24px)">
+                    <p>A skill is a reusable package of instructions, tools, and context that an AI agent can load on demand to perform a specific task.</p>
+                </div>
+            </div>
+            <div class="bold-card reveal-scale" style="transition-delay:0.3s">
+                <h2 style="font-size:clamp(0.9rem,1.5vw,1.2rem);margin-bottom:clamp(14px,2vw,24px)">A Skill Typically Contains</h2>
+                <div style="display:flex;flex-direction:column;gap:clamp(10px,1.5vw,16px)">
+                    <div style="display:flex;align-items:center;gap:clamp(8px,1.2vw,14px)"><span style="font-size:clamp(16px,2vw,24px)">📋</span><div><strong>Instructions</strong><br><span style="font-size:var(--small-size);opacity:0.8">What to do and how to do it</span></div></div>
+                    <div style="display:flex;align-items:center;gap:clamp(8px,1.2vw,14px)"><span style="font-size:clamp(16px,2vw,24px)">🔧</span><div><strong>Tools & Scripts</strong><br><span style="font-size:var(--small-size);opacity:0.8">Executable capabilities</span></div></div>
+                    <div style="display:flex;align-items:center;gap:clamp(8px,1.2vw,14px)"><span style="font-size:clamp(16px,2vw,24px)">📚</span><div><strong>Reference Data</strong><br><span style="font-size:var(--small-size);opacity:0.8">Templates, styles, standards</span></div></div>
+                    <div style="display:flex;align-items:center;gap:clamp(8px,1.2vw,14px)"><span style="font-size:clamp(16px,2vw,24px)">🎯</span><div><strong>Trigger Logic</strong><br><span style="font-size:var(--small-size);opacity:0.8">When to activate automatically</span></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.6s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span>03 / 17</span>
+    </div>
+</section>
+
+<!-- ===========================================
+     SLIDE 04: THE PROBLEM
+     =========================================== -->
+<section class="slide" data-nav="Problem">
+    <div class="slide-header">
+        <div class="slide-number reveal">04</div>
+        <div class="slide-nav reveal"><span>INTRO</span><span class="active">PROBLEM</span><span>ORIGINS</span><span>EVOLUTION</span><span>TODAY</span></div>
+    </div>
+    <div class="slide-content">
+        <div class="two-col">
+            <div>
+                <div class="section-label reveal">Why Skills Matter</div>
+                <h2 class="slide-title reveal">The Problem Before Skills</h2>
+                <p class="slide-subtitle reveal">Early AI models were powerful but isolated. They could reason and generate text, but couldn't <strong style="color:var(--accent)">take action</strong> in the real world.</p>
+            </div>
+            <div>
+                <div class="compare-row reveal" style="transition-delay:0.2s">
+                    <div class="compare-cell">
+                        <div class="label">Before Skills</div>
+                        <div class="value" style="font-size:clamp(0.7rem,1.2vw,0.95rem)">Every integration was custom-built. M models × N tools = M×N connectors.</div>
+                    </div>
+                    <div class="compare-cell highlight">
+                        <div class="label">With Skills</div>
+                        <div class="value" style="font-size:clamp(0.7rem,1.2vw,0.95rem)">Standardized interfaces. Build once, run across any agent.</div>
+                    </div>
+                </div>
+                <div class="compare-row reveal" style="transition-delay:0.3s">
+                    <div class="compare-cell">
+                        <div class="label">Before</div>
+                        <div class="value" style="font-size:clamp(0.7rem,1.2vw,0.95rem)">Knowledge frozen at training time. No access to live data.</div>
+                    </div>
+                    <div class="compare-cell highlight">
+                        <div class="label">After</div>
+                        <div class="value" style="font-size:clamp(0.7rem,1.2vw,0.95rem)">Dynamic access to APIs, databases, files, and external services.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.5s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span>04 / 17</span>
+    </div>
+</section>
+
+<!-- ===========================================
+     SLIDE 05: THE INTELLECTUAL ROOTS
+     =========================================== -->
+<section class="slide" data-nav="Origins">
+    <div class="slide-header">
+        <div class="slide-number reveal">05</div>
+        <div class="slide-nav reveal"><span>INTRO</span><span>CONCEPT</span><span class="active">ORIGINS</span><span>EVOLUTION</span><span>TODAY</span></div>
+    </div>
+    <div class="slide-content">
+        <div class="section-label reveal">The Intellectual Roots</div>
+        <h2 class="slide-title reveal">Where It All Started</h2>
+        <div class="two-col" style="margin-top:clamp(12px,2vw,24px)">
+            <div class="dark-card reveal-left" style="transition-delay:0.2s">
+                <div style="display:flex;align-items:center;gap:clamp(6px,1vw,10px);margin-bottom:clamp(8px,1.2vw,14px)">
+                    <span class="accent-dot"></span>
+                    <span style="font-size:var(--small-size);color:var(--accent);font-weight:600">MAY 2022</span>
+                </div>
+                <h3>MRKL Systems</h3>
+                <p style="font-size:var(--body-size);color:var(--text-secondary);line-height:1.5;margin-top:clamp(6px,1vw,10px)">AI21 Labs proposed <strong style="color:var(--text-primary)">Modular Reasoning, Knowledge and Language</strong> — the first architecture for LLMs that could call external tools and modules. The seed of the "tool-augmented AI" idea.</p>
+            </div>
+            <div class="dark-card reveal-right" style="transition-delay:0.35s">
+                <div style="display:flex;align-items:center;gap:clamp(6px,1vw,10px);margin-bottom:clamp(8px,1.2vw,14px)">
+                    <span class="accent-dot"></span>
+                    <span style="font-size:var(--small-size);color:var(--accent);font-weight:600">OCT 2022</span>
+                </div>
+                <h3>ReAct</h3>
+                <p style="font-size:var(--body-size);color:var(--text-secondary);line-height:1.5;margin-top:clamp(6px,1vw,10px)">Princeton researchers formalized the <strong style="color:var(--text-primary)">Reason + Act</strong> paradigm — LLMs that think step-by-step, then take action. This became the blueprint for every modern AI agent.</p>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.5s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span>05 / 17</span>
+    </div>
+</section>
+
+<!-- ===========================================
+     SLIDE 06: VOYAGER — THE SKILL LIBRARY
+     =========================================== -->
+<section class="slide" data-nav="Voyager">
+    <div class="slide-header">
+        <div class="slide-number reveal">06</div>
+        <div class="slide-nav reveal"><span>INTRO</span><span>CONCEPT</span><span class="active">ORIGINS</span><span>EVOLUTION</span><span>TODAY</span></div>
+    </div>
+    <div class="slide-content">
+        <div class="two-col">
+            <div>
+                <div class="section-label reveal">The Breakthrough Paper</div>
+                <h2 class="slide-title reveal">Voyager: The First "Skill Library"</h2>
+                <p class="slide-subtitle reveal" style="margin-top:clamp(10px,1.5vw,16px)">In May 2023, researchers from NVIDIA, Caltech, UT Austin, and Stanford introduced <strong style="color:var(--accent)">Voyager</strong> — an AI agent that could learn, store, and reuse skills.</p>
+                <div class="quote-block reveal" style="margin-top:clamp(14px,2vw,20px)">
+                    <p>Skills compound over time. An agent with a growing skill library gets better at solving new problems — without retraining.</p>
+                    <div class="quote-attr">— Voyager paper, arXiv:2305.16291</div>
+                </div>
+            </div>
+            <div class="bold-card reveal-scale" style="transition-delay:0.3s">
+                <h2 style="font-size:clamp(0.85rem,1.4vw,1.1rem);margin-bottom:clamp(12px,1.8vw,20px)">Why Voyager Mattered</h2>
+                <div style="display:flex;flex-direction:column;gap:clamp(10px,1.5vw,16px)">
+                    <div><strong>Reusable code</strong><br><span style="font-size:var(--small-size);opacity:0.8">Skills stored as functions, retrieved by similarity</span></div>
+                    <div><strong>Compositional</strong><br><span style="font-size:var(--small-size);opacity:0.8">Complex tasks built from simpler skills</span></div>
+                    <div><strong>Ever-growing</strong><br><span style="font-size:var(--small-size);opacity:0.8">Library expands with each new challenge</span></div>
+                    <div><strong>No forgetting</strong><br><span style="font-size:var(--small-size);opacity:0.8">Past capabilities preserved permanently</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.5s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span>06 / 17</span>
+    </div>
+</section>
+
+<!-- ===========================================
+     SLIDE 07: CHATGPT PLUGINS TO FUNCTION CALLING
+     =========================================== -->
+<section class="slide" data-nav="Plugins">
+    <div class="slide-header">
+        <div class="slide-number reveal">07</div>
+        <div class="slide-nav reveal"><span>INTRO</span><span>ORIGINS</span><span class="active">EVOLUTION</span><span>TODAY</span><span>IMPACT</span></div>
+    </div>
+    <div class="slide-content">
+        <div class="section-label reveal">The Industry Response</div>
+        <h2 class="slide-title reveal">From Plugins to Function Calling</h2>
+        <div style="margin-top:clamp(14px,2.5vw,28px)">
+            <div class="timeline-item reveal" style="transition-delay:0.2s">
+                <div class="timeline-dot"></div>
+                <div class="timeline-date">Mar 2023</div>
+                <div class="timeline-text"><strong>ChatGPT Plugins launch</strong> — the first mainstream attempt at "skills for chat." Third-party services could integrate directly with ChatGPT.</div>
+            </div>
+            <div class="timeline-item reveal" style="transition-delay:0.3s">
+                <div class="timeline-dot"></div>
+                <div class="timeline-date">Jun 2023</div>
+                <div class="timeline-text"><strong>OpenAI ships Function Calling</strong> — a structured, schema-based interface replacing free-form plugin calls. Models learn to output structured JSON to invoke tools.</div>
+            </div>
+            <div class="timeline-item reveal" style="transition-delay:0.4s">
+                <div class="timeline-dot"></div>
+                <div class="timeline-date">Nov 2023</div>
+                <div class="timeline-text"><strong>Custom GPTs replace plugins</strong> — OpenAI pivots from developer-only plugins to user-creatable agents. Anyone can bundle instructions + tools + knowledge into a "GPT."</div>
+            </div>
+            <div class="timeline-item reveal" style="transition-delay:0.5s">
+                <div class="timeline-dot dim"></div>
+                <div class="timeline-date">Apr 2024</div>
+                <div class="timeline-text"><strong>Plugins officially retired</strong> — the experiment ends, but the pattern survives. The industry learns: skills need structure, not just APIs.</div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.6s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span>07 / 17</span>
+    </div>
+</section>
+
+<!-- ===========================================
+     SLIDE 08: MCP — THE OPEN STANDARD
+     =========================================== -->
+<section class="slide" data-nav="MCP">
+    <div class="slide-header">
+        <div class="slide-number reveal">08</div>
+        <div class="slide-nav reveal"><span>INTRO</span><span>ORIGINS</span><span class="active">EVOLUTION</span><span>TODAY</span><span>IMPACT</span></div>
+    </div>
+    <div class="slide-content">
+        <div class="two-col">
+            <div>
+                <div class="section-label reveal">The Turning Point</div>
+                <h2 class="slide-title reveal">MCP: The Universal Connector</h2>
+                <p class="slide-subtitle reveal" style="margin-top:clamp(10px,1.5vw,16px)">In November 2024, Anthropic released the <strong style="color:var(--accent)">Model Context Protocol</strong> — an open standard for connecting AI agents to external tools and data.</p>
+                <p class="slide-subtitle reveal" style="margin-top:clamp(8px,1.2vw,14px)">Think of MCP as <strong style="color:var(--text-primary)">USB for AI</strong>: one standard interface that works across all models and all tools.</p>
+                <div class="pill-row reveal">
+                    <span class="pill accent">Open Standard</span>
+                    <span class="pill">JSON-RPC Protocol</span>
+                    <span class="pill">Linux Foundation</span>
+                </div>
+            </div>
+            <div>
+                <div class="dark-card reveal-right" style="transition-delay:0.3s;margin-bottom:clamp(10px,1.5vw,16px)">
+                    <h3 style="font-size:clamp(0.8rem,1.3vw,1rem)">Adopted By</h3>
+                    <p style="font-size:var(--body-size);color:var(--text-secondary);line-height:1.8;margin-top:clamp(6px,0.8vw,10px)">Anthropic · OpenAI · Google DeepMind · Microsoft · 16,000+ community servers</p>
+                </div>
+                <div class="dark-card reveal-right" style="transition-delay:0.4s">
+                    <h3 style="font-size:clamp(0.8rem,1.3vw,1rem)">Why It Won</h3>
+                    <p style="font-size:var(--body-size);color:var(--text-secondary);line-height:1.6;margin-top:clamp(6px,0.8vw,10px)">Solved the M×N problem. Instead of building separate integrations for every model-tool pair, build one MCP server and it works everywhere.</p>
+                </div>
+                <div style="margin-top:clamp(8px,1.2vw,14px);padding:clamp(8px,1.2vw,14px);border-left:2px solid var(--accent);font-size:var(--small-size);color:var(--text-secondary);line-height:1.5" class="reveal-right" style="transition-delay:0.5s">
+                    <strong style="color:var(--accent)">MCP ≠ Skills</strong> — MCP is the <em>connectivity protocol</em> (how agents talk to tools). Skills are <em>packaged knowledge</em> (what agents know how to do). They're complementary: MCP connects, Skills instruct.
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.6s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span>08 / 17</span>
+    </div>
+</section>
+
+<!-- ===========================================
+     SLIDE 09: AGENT SKILLS ARRIVE
+     =========================================== -->
+<section class="slide" data-nav="Skills">
+    <div class="slide-header">
+        <div class="slide-number reveal">09</div>
+        <div class="slide-nav reveal"><span>INTRO</span><span>ORIGINS</span><span>EVOLUTION</span><span class="active">TODAY</span><span>IMPACT</span></div>
+    </div>
+    <div class="slide-content">
+        <div class="section-label reveal">Late 2025</div>
+        <h2 class="slide-title reveal">Agent Skills Go Mainstream</h2>
+        <div style="margin-top:clamp(14px,2.5vw,28px)">
+            <div class="timeline-item reveal" style="transition-delay:0.2s">
+                <div class="timeline-dot"></div>
+                <div class="timeline-date">Oct 2025</div>
+                <div class="timeline-text"><strong>Anthropic launches Agent Skills</strong> — portable folders with instructions, scripts, and resources. Claude Code, Claude.ai, and the Agent SDK all support them natively.</div>
+            </div>
+            <div class="timeline-item reveal" style="transition-delay:0.3s">
+                <div class="timeline-dot"></div>
+                <div class="timeline-date">Dec 2025</div>
+                <div class="timeline-text"><strong>GitHub ships Agent Skills for Copilot</strong> — using the same open format. Skills work across VS Code, Copilot CLI, and the cloud agent.</div>
+            </div>
+            <div class="timeline-item reveal" style="transition-delay:0.4s">
+                <div class="timeline-dot"></div>
+                <div class="timeline-date">Dec 2025</div>
+                <div class="timeline-text"><strong>Anthropic donates MCP to the Linux Foundation</strong> — the protocol becomes a vendor-neutral standard under the Agentic AI Foundation.</div>
+            </div>
+            <div class="timeline-item reveal" style="transition-delay:0.5s">
+                <div class="timeline-dot"></div>
+                <div class="timeline-date">2026</div>
+                <div class="timeline-text"><strong>Microsoft integrates skills into Copilot Cowork</strong> — reusable instruction sets for multi-step workflows across Microsoft 365.</div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.6s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span>09 / 17</span>
+    </div>
+</section>
+
+<!-- ===========================================
+     SLIDE 10: HOW SKILLS WORK TODAY
+     =========================================== -->
+<section class="slide" data-nav="How">
+    <div class="slide-header">
+        <div class="slide-number reveal">10</div>
+        <div class="slide-nav reveal"><span>INTRO</span><span>ORIGINS</span><span>EVOLUTION</span><span class="active">TODAY</span><span>IMPACT</span></div>
+    </div>
+    <div class="slide-content">
+        <div class="two-col">
+            <div>
+                <div class="section-label reveal">Under The Hood</div>
+                <h2 class="slide-title reveal">How Skills Work Today</h2>
+                <p class="slide-subtitle reveal" style="margin-top:clamp(10px,1.5vw,16px)">Modern AI skills follow a simple, portable format: a folder with a manifest file and supporting resources.</p>
+            </div>
+            <div class="reveal-right" style="transition-delay:0.3s">
+                <div class="code-block">
+                    <span class="comment">// A typical skill folder</span><br>
+                    my-skill/<br>
+                    ├── <span class="keyword">SKILL.md</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Instructions</span><br>
+                    ├── <span class="string">templates/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Reference data</span><br>
+                    ├── <span class="string">scripts/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Executable tools</span><br>
+                    └── <span class="string">examples/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// Usage patterns</span><br><br>
+                    <span class="comment">// The agent loads the skill</span><br>
+                    <span class="comment">// when it matches the task</span><br>
+                    <span class="keyword">trigger:</span> <span class="string">"user mentions PDF"</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.5s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span>10 / 17</span>
+    </div>
+</section>
+
+<!-- ===========================================
+     SLIDE 11: THE SKILLS ECOSYSTEM
+     =========================================== -->
+<section class="slide" data-nav="Ecosystem">
+    <div class="slide-header">
+        <div class="slide-number reveal">11</div>
+        <div class="slide-nav reveal"><span>INTRO</span><span>ORIGINS</span><span>EVOLUTION</span><span class="active">TODAY</span><span>IMPACT</span></div>
+    </div>
+    <div class="slide-content">
+        <div class="section-label reveal">The Landscape</div>
+        <h2 class="slide-title reveal">Today's Skills Ecosystem</h2>
+        <div class="feature-grid" style="margin-top:clamp(14px,2.5vw,28px)">
+            <div class="feature-cell reveal" style="transition-delay:0.15s">
+                <div class="icon">🟠</div>
+                <h3>Claude Code</h3>
+                <p>Portable skill folders with SKILL.md. Auto-invoke based on context. Marketplace for sharing.</p>
+            </div>
+            <div class="feature-cell reveal" style="transition-delay:0.25s">
+                <div class="icon">🐙</div>
+                <h3>GitHub Copilot</h3>
+                <p>Agent Skills in .github/skills/. Works across VS Code, CLI, and cloud agent.</p>
+            </div>
+            <div class="feature-cell reveal" style="transition-delay:0.35s">
+                <div class="icon">🔷</div>
+                <h3>Microsoft 365</h3>
+                <p>Copilot Cowork uses skills for multi-step workflows across Office apps.</p>
+            </div>
+            <div class="feature-cell reveal" style="transition-delay:0.45s">
+                <div class="icon">🟢</div>
+                <h3>OpenAI</h3>
+                <p>Custom GPTs + MCP adoption in Agents SDK. Function calling as the API interface.</p>
+            </div>
+            <div class="feature-cell reveal" style="transition-delay:0.55s">
+                <div class="icon">🔗</div>
+                <h3>MCP Servers</h3>
+                <p>16,000+ community servers connecting to Slack, GitHub, databases, and more.</p>
+            </div>
+            <div class="feature-cell reveal" style="transition-delay:0.65s">
+                <div class="icon">🏢</div>
+                <h3>Enterprise</h3>
+                <p>Custom skills encode team-specific patterns, review standards, and deployment workflows.</p>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.7s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span>11 / 17</span>
+    </div>
+</section>
+
+<!-- ===========================================
+     SLIDE 12: REAL-WORLD APPLICATIONS
+     =========================================== -->
+<section class="slide" data-nav="Applications">
+    <div class="slide-header">
+        <div class="slide-number reveal">12</div>
+        <div class="slide-nav reveal"><span>INTRO</span><span>ORIGINS</span><span>EVOLUTION</span><span class="active">TODAY</span><span>IMPACT</span></div>
+    </div>
+    <div class="slide-content">
+        <div class="two-col">
+            <div>
+                <div class="section-label reveal">In Practice</div>
+                <h2 class="slide-title reveal">Real-World Applications</h2>
+                <p class="slide-subtitle reveal">Skills are already transforming how teams work across industries.</p>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:clamp(10px,1.5vw,16px)">
+                <div class="dark-card reveal-right" style="transition-delay:0.2s">
+                    <div style="display:flex;align-items:center;gap:clamp(8px,1.2vw,14px)">
+                        <span style="font-size:clamp(18px,2.5vw,30px)">📄</span>
+                        <div><h3 style="font-size:clamp(0.75rem,1.2vw,0.95rem)">Document Automation</h3><p style="font-size:var(--small-size);color:var(--text-secondary);margin-top:2px">Generate Word, Excel, PowerPoint, and PDF files from natural language commands</p></div>
+                    </div>
+                </div>
+                <div class="dark-card reveal-right" style="transition-delay:0.3s">
+                    <div style="display:flex;align-items:center;gap:clamp(8px,1.2vw,14px)">
+                        <span style="font-size:clamp(18px,2.5vw,30px)">👩‍💻</span>
+                        <div><h3 style="font-size:clamp(0.75rem,1.2vw,0.95rem)">Developer Productivity</h3><p style="font-size:var(--small-size);color:var(--text-secondary);margin-top:2px">Encode repo-specific conventions, test patterns, and deployment scripts</p></div>
+                    </div>
+                </div>
+                <div class="dark-card reveal-right" style="transition-delay:0.4s">
+                    <div style="display:flex;align-items:center;gap:clamp(8px,1.2vw,14px)">
+                        <span style="font-size:clamp(18px,2.5vw,30px)">🔌</span>
+                        <div><h3 style="font-size:clamp(0.75rem,1.2vw,0.95rem)">System Integration</h3><p style="font-size:var(--small-size);color:var(--text-secondary);margin-top:2px">Connect AI to Slack, GitHub, Postgres, Google Drive via MCP servers</p></div>
+                    </div>
+                </div>
+                <div class="dark-card reveal-right" style="transition-delay:0.5s">
+                    <div style="display:flex;align-items:center;gap:clamp(8px,1.2vw,14px)">
+                        <span style="font-size:clamp(18px,2.5vw,30px)">📊</span>
+                        <div><h3 style="font-size:clamp(0.75rem,1.2vw,0.95rem)">IT Operations</h3><p style="font-size:var(--small-size);color:var(--text-secondary);margin-top:2px">Automated incident response, monitoring dashboards, and infrastructure management</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.6s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span>12 / 17</span>
+    </div>
+</section>
+
+<!-- ===========================================
+     SLIDE 13: POPULAR SKILLS YOU CAN TRY
+     =========================================== -->
+<section class="slide" data-nav="Try It">
+    <div class="slide-header">
+        <div class="slide-number reveal">13</div>
+        <div class="slide-nav reveal"><span>INTRO</span><span>ORIGINS</span><span>EVOLUTION</span><span class="active">TODAY</span><span>IMPACT</span></div>
+    </div>
+    <div class="slide-content">
+        <div class="section-label reveal">Get Started Today</div>
+        <h2 class="slide-title reveal">Popular Skills You Can Try</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:clamp(10px,2vw,20px);margin-top:clamp(12px,2vw,22px)">
+            <div>
+                <div style="font-size:var(--small-size);text-transform:uppercase;letter-spacing:0.15em;color:var(--accent);font-weight:600;margin-bottom:clamp(8px,1.2vw,14px)" class="reveal" style="transition-delay:0.15s">Anthropic Official Skills</div>
+                <div class="dark-card reveal" style="transition-delay:0.2s;margin-bottom:clamp(6px,1vw,10px);padding:clamp(10px,1.8vw,18px)">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <div><h3 style="font-size:clamp(0.7rem,1.2vw,0.95rem)">Frontend Design</h3><p style="font-size:var(--small-size);color:var(--text-secondary);margin-top:2px">Create distinctive, production-grade UIs</p></div>
+                        <span style="font-size:var(--small-size);color:var(--accent);font-weight:600">277K+ installs</span>
+                    </div>
+                </div>
+                <div class="dark-card reveal" style="transition-delay:0.3s;margin-bottom:clamp(6px,1vw,10px);padding:clamp(10px,1.8vw,18px)">
+                    <h3 style="font-size:clamp(0.7rem,1.2vw,0.95rem)">Document Suite (DOCX · XLSX · PDF · PPTX)</h3>
+                    <p style="font-size:var(--small-size);color:var(--text-secondary);margin-top:2px">Create and manipulate Office files from natural language</p>
+                </div>
+                <div class="dark-card reveal" style="transition-delay:0.4s;margin-bottom:clamp(6px,1vw,10px);padding:clamp(10px,1.8vw,18px)">
+                    <h3 style="font-size:clamp(0.7rem,1.2vw,0.95rem)">Claude API · MCP Builder · Webapp Testing</h3>
+                    <p style="font-size:var(--small-size);color:var(--text-secondary);margin-top:2px">Developer tools for building, connecting, and testing</p>
+                </div>
+            </div>
+            <div>
+                <div style="font-size:var(--small-size);text-transform:uppercase;letter-spacing:0.15em;color:var(--text-secondary);font-weight:600;margin-bottom:clamp(8px,1.2vw,14px)" class="reveal" style="transition-delay:0.15s">Partner & Community Skills</div>
+                <div class="dark-card reveal" style="transition-delay:0.3s;margin-bottom:clamp(6px,1vw,10px);padding:clamp(10px,1.8vw,18px)">
+                    <h3 style="font-size:clamp(0.7rem,1.2vw,0.95rem)">Enterprise Partners</h3>
+                    <p style="font-size:var(--small-size);color:var(--text-secondary);margin-top:2px">Atlassian · Figma · Stripe · Notion · Canva · Zapier</p>
+                </div>
+                <div class="dark-card reveal" style="transition-delay:0.4s;margin-bottom:clamp(6px,1vw,10px);padding:clamp(10px,1.8vw,18px)">
+                    <h3 style="font-size:clamp(0.7rem,1.2vw,0.95rem)">Community Ecosystem</h3>
+                    <p style="font-size:var(--small-size);color:var(--text-secondary);margin-top:2px">1.2M+ skills indexed across marketplaces. Works with Claude Code, Codex CLI, Cursor, Gemini CLI, and Copilot.</p>
+                </div>
+                <div class="bold-card reveal" style="transition-delay:0.5s;padding:clamp(12px,2vw,22px)">
+                    <h3 style="font-size:clamp(0.7rem,1.2vw,0.95rem);margin-bottom:4px">Anyone Can Create Skills</h3>
+                    <p style="font-size:var(--small-size);opacity:0.85">No ML expertise needed. Write a SKILL.md, add resources, and share. The <strong>Skill Creator</strong> skill even helps you build new skills.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.6s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span>13 / 17</span>
+    </div>
+</section>
+
+<!-- ===========================================
+     SLIDE 14: CASE STUDY — RED HAT
+     =========================================== -->
+<section class="slide" data-nav="Red Hat">
+    <div class="slide-header">
+        <div class="slide-number reveal">14</div>
+        <div class="slide-nav reveal"><span>INTRO</span><span>ORIGINS</span><span>EVOLUTION</span><span class="active">TODAY</span><span>IMPACT</span></div>
+    </div>
+    <div class="slide-content">
+        <div class="two-col">
+            <div>
+                <div class="section-label reveal">Case Study</div>
+                <h2 class="slide-title reveal">Red Hat: Skills for the Enterprise</h2>
+                <p class="slide-subtitle reveal" style="margin-top:clamp(8px,1.2vw,14px)">At <strong style="color:var(--accent)">Red Hat Summit 2026</strong>, CEO Matt Hicks unveiled a dedicated skills repository — positioning AI skills as the next enterprise inflection point after Linux and Kubernetes.</p>
+                <div class="quote-block reveal" style="margin-top:clamp(12px,1.8vw,20px)">
+                    <p style="font-size:clamp(0.8rem,1.4vw,1.1rem)">"A model without specific skills is like a high-performance vehicle without a steering wheel."</p>
+                    <div class="quote-attr">— Matt Hicks, Red Hat CEO</div>
+                </div>
+                <div class="pill-row reveal">
+                    <span class="pill accent">Open Source</span>
+                    <span class="pill">MCP-Based</span>
+                    <span class="pill">Agent Skills Standard</span>
+                </div>
+            </div>
+            <div>
+                <div style="font-size:var(--small-size);text-transform:uppercase;letter-spacing:0.12em;color:var(--accent);font-weight:600;margin-bottom:clamp(8px,1.2vw,12px)" class="reveal-right" style="transition-delay:0.2s">Red Hat Skills Bundle</div>
+                <div class="dark-card reveal-right" style="transition-delay:0.25s;margin-bottom:clamp(5px,0.8vw,8px);padding:clamp(8px,1.5vw,16px)">
+                    <div style="display:flex;align-items:center;gap:clamp(6px,1vw,10px)">
+                        <span style="color:var(--accent);font-size:clamp(14px,1.5vw,20px)">🛡</span>
+                        <div><h3 style="font-size:clamp(0.65rem,1.1vw,0.85rem)">CVE Explainer</h3><p style="font-size:clamp(0.55rem,0.9vw,0.75rem);color:var(--text-secondary);margin-top:1px">Real-time vulnerability lookups with Red Hat severity data</p></div>
+                    </div>
+                </div>
+                <div class="dark-card reveal-right" style="transition-delay:0.35s;margin-bottom:clamp(5px,0.8vw,8px);padding:clamp(8px,1.5vw,16px)">
+                    <div style="display:flex;align-items:center;gap:clamp(6px,1vw,10px)">
+                        <span style="color:var(--accent);font-size:clamp(14px,1.5vw,20px)">🔍</span>
+                        <div><h3 style="font-size:clamp(0.65rem,1.1vw,0.85rem)">Diagnostics Gathering</h3><p style="font-size:clamp(0.55rem,0.9vw,0.75rem);color:var(--text-secondary);margin-top:1px">Automated sosreport, must-gather, and Ansible diagnostics</p></div>
+                    </div>
+                </div>
+                <div class="dark-card reveal-right" style="transition-delay:0.45s;margin-bottom:clamp(5px,0.8vw,8px);padding:clamp(8px,1.5vw,16px)">
+                    <div style="display:flex;align-items:center;gap:clamp(6px,1vw,10px)">
+                        <span style="color:var(--accent);font-size:clamp(14px,1.5vw,20px)">📅</span>
+                        <div><h3 style="font-size:clamp(0.65rem,1.1vw,0.85rem)">Product Lifecycle Advisor</h3><p style="font-size:clamp(0.55rem,0.9vw,0.75rem);color:var(--text-secondary);margin-top:1px">Checks support phase, available updates, and upgrade timing</p></div>
+                    </div>
+                </div>
+                <div class="dark-card reveal-right" style="transition-delay:0.55s;margin-bottom:clamp(5px,0.8vw,8px);padding:clamp(8px,1.5vw,16px)">
+                    <div style="display:flex;align-items:center;gap:clamp(6px,1vw,10px)">
+                        <span style="color:var(--accent);font-size:clamp(14px,1.5vw,20px)">🔗</span>
+                        <div><h3 style="font-size:clamp(0.65rem,1.1vw,0.85rem)">Security MCP Setup</h3><p style="font-size:clamp(0.55rem,0.9vw,0.75rem);color:var(--text-secondary);margin-top:1px">One-click MCP server for Red Hat security APIs</p></div>
+                    </div>
+                </div>
+                <div style="font-size:clamp(0.55rem,0.9vw,0.75rem);color:var(--text-secondary);margin-top:clamp(6px,1vw,10px);line-height:1.5" class="reveal-right" style="transition-delay:0.6s">
+                    Works with Claude Code, Cursor, Windsurf, and any agent supporting the open skills standard. All data pulled live from Red Hat production APIs — no cached or synthetic data.
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.65s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span>14 / 17</span>
+    </div>
+</section>
+
+<!-- ===========================================
+     SLIDE 15: SKILLS VS ALTERNATIVES
+     =========================================== -->
+<section class="slide" data-nav="Compare">
+    <div class="slide-header">
+        <div class="slide-number reveal">15</div>
+        <div class="slide-nav reveal"><span>INTRO</span><span>ORIGINS</span><span>EVOLUTION</span><span>TODAY</span><span class="active">IMPACT</span></div>
+    </div>
+    <div class="slide-content">
+        <div class="section-label reveal">Putting It In Context</div>
+        <h2 class="slide-title reveal">Skills vs. Other Approaches</h2>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(10px,1.5vw,18px);margin-top:clamp(14px,2.5vw,24px)">
+            <div class="dark-card reveal" style="transition-delay:0.2s">
+                <h3 style="font-size:clamp(0.75rem,1.2vw,1rem);margin-bottom:clamp(8px,1vw,14px)">Prompt Engineering</h3>
+                <p style="font-size:var(--small-size);color:var(--text-secondary);line-height:1.5">Carefully crafted instructions in the conversation. Works but doesn't scale — you re-write the same prompts repeatedly.</p>
+                <div class="pill-row"><span class="pill">Manual</span><span class="pill">Ephemeral</span></div>
+            </div>
+            <div class="dark-card reveal" style="transition-delay:0.3s;border-color:var(--accent)">
+                <h3 style="font-size:clamp(0.75rem,1.2vw,1rem);margin-bottom:clamp(8px,1vw,14px);color:var(--accent)">Skills</h3>
+                <p style="font-size:var(--small-size);color:var(--text-secondary);line-height:1.5">Packaged, reusable, shareable. Auto-triggered by context. Portable across agents and teams.</p>
+                <div class="pill-row"><span class="pill accent">Reusable</span><span class="pill accent">Portable</span></div>
+            </div>
+            <div class="dark-card reveal" style="transition-delay:0.4s">
+                <h3 style="font-size:clamp(0.75rem,1.2vw,1rem);margin-bottom:clamp(8px,1vw,14px)">Fine-Tuning</h3>
+                <p style="font-size:var(--small-size);color:var(--text-secondary);line-height:1.5">Train the model on specific data. Expensive, slow, requires ML expertise. Hard to update.</p>
+                <div class="pill-row"><span class="pill">Expensive</span><span class="pill">Static</span></div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.5s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span>15 / 17</span>
+    </div>
+</section>
+
+<!-- ===========================================
+     SLIDE 16: WHAT THIS MEANS FOR YOU
+     =========================================== -->
+<section class="slide" data-nav="For You">
+    <div class="slide-header">
+        <div class="slide-number reveal">16</div>
+        <div class="slide-nav reveal"><span>INTRO</span><span>ORIGINS</span><span>EVOLUTION</span><span>TODAY</span><span class="active">IMPACT</span></div>
+    </div>
+    <div class="slide-content">
+        <div class="two-col">
+            <div>
+                <div class="section-label reveal">Your Takeaway</div>
+                <h2 class="slide-title reveal">What This Means for You</h2>
+                <p class="slide-subtitle reveal" style="margin-top:clamp(10px,1.5vw,16px)">As a leader, skills change how you should think about AI adoption.</p>
+            </div>
+            <div class="bold-card reveal-scale" style="transition-delay:0.3s">
+                <h2 style="font-size:clamp(0.85rem,1.4vw,1.1rem);margin-bottom:clamp(14px,2vw,20px)">Action Items</h2>
+                <div style="display:flex;flex-direction:column;gap:clamp(12px,1.8vw,18px)">
+                    <div>
+                        <strong>1. Start with pre-built skills</strong>
+                        <p style="font-size:var(--small-size);opacity:0.8;margin-top:2px">Most platforms ship with skills for documents, code review, and data analysis. Use them before building custom.</p>
+                    </div>
+                    <div>
+                        <strong>2. Identify repeatable workflows</strong>
+                        <p style="font-size:var(--small-size);opacity:0.8;margin-top:2px">If your team does the same 5-step process weekly, it's a skill candidate. Capture institutional knowledge.</p>
+                    </div>
+                    <div>
+                        <strong>3. Think ecosystems, not tools</strong>
+                        <p style="font-size:var(--small-size);opacity:0.8;margin-top:2px">Choose platforms that support open standards (MCP). Avoid vendor lock-in on proprietary skill formats.</p>
+                    </div>
+                    <div>
+                        <strong>4. Empower skill creators</strong>
+                        <p style="font-size:var(--small-size);opacity:0.8;margin-top:2px">Your domain experts can create skills without ML knowledge. Encourage experimentation.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.5s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span>16 / 17</span>
+    </div>
+</section>
+
+<!-- ===========================================
+     SLIDE 17: KEY TAKEAWAYS / CLOSING
+     =========================================== -->
+<section class="slide" data-nav="Summary">
+    <div class="slide-header">
+        <div class="slide-number reveal">17</div>
+        <div class="slide-nav reveal"><span>INTRO</span><span>ORIGINS</span><span>EVOLUTION</span><span>TODAY</span><span class="active">SUMMARY</span></div>
+    </div>
+    <div class="slide-content">
+        <div class="two-col">
+            <div>
+                <div class="section-label reveal">Wrapping Up</div>
+                <h2 class="slide-title reveal">Key Takeaways</h2>
+                <div style="display:flex;flex-direction:column;gap:clamp(12px,2vw,20px);margin-top:clamp(14px,2.5vw,24px)">
+                    <div class="reveal" style="transition-delay:0.2s;display:flex;gap:clamp(10px,1.5vw,16px);align-items:flex-start">
+                        <span class="accent-dot" style="margin-top:clamp(4px,0.6vw,8px);flex-shrink:0"></span>
+                        <p style="font-size:var(--body-size);line-height:1.5"><strong>Skills are the app-store moment for AI.</strong> They turn general-purpose models into specialized, capable agents.</p>
+                    </div>
+                    <div class="reveal" style="transition-delay:0.3s;display:flex;gap:clamp(10px,1.5vw,16px);align-items:flex-start">
+                        <span class="accent-dot" style="margin-top:clamp(4px,0.6vw,8px);flex-shrink:0"></span>
+                        <p style="font-size:var(--body-size);line-height:1.5"><strong>Open standards won.</strong> MCP is now the universal protocol. Build on it.</p>
+                    </div>
+                    <div class="reveal" style="transition-delay:0.4s;display:flex;gap:clamp(10px,1.5vw,16px);align-items:flex-start">
+                        <span class="accent-dot" style="margin-top:clamp(4px,0.6vw,8px);flex-shrink:0"></span>
+                        <p style="font-size:var(--body-size);line-height:1.5"><strong>No ML expertise required.</strong> Anyone who can write clear instructions can create a skill.</p>
+                    </div>
+                    <div class="reveal" style="transition-delay:0.5s;display:flex;gap:clamp(10px,1.5vw,16px);align-items:flex-start">
+                        <span class="accent-dot" style="margin-top:clamp(4px,0.6vw,8px);flex-shrink:0"></span>
+                        <p style="font-size:var(--body-size);line-height:1.5"><strong>The ecosystem is converging.</strong> Anthropic, OpenAI, Microsoft, and GitHub share the same vision.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bold-card reveal-scale" style="transition-delay:0.35s;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center">
+                <div style="font-size:clamp(10px,1.1vw,13px);text-transform:uppercase;letter-spacing:0.2em;opacity:0.6;margin-bottom:clamp(12px,2vw,20px)">The Journey</div>
+                <div style="font-size:clamp(0.8rem,1.4vw,1.1rem);line-height:1.8">
+                    <div style="opacity:0.5">2022 — Academic Research</div>
+                    <div style="opacity:0.65">2023 — Industry Experiments</div>
+                    <div style="opacity:0.8">2024 — Open Standards</div>
+                    <div style="opacity:1;font-weight:700">2025 — Mainstream Adoption</div>
+                </div>
+                <div style="margin-top:clamp(16px,2.5vw,28px);font-size:var(--body-size);opacity:0.7">The future is modular.</div>
+            </div>
+        </div>
+    </div>
+    <div class="slide-footer reveal" style="transition-delay:0.6s">
+        <span>AI SKILLS — A PRIMER</span>
+        <span style="display:flex;align-items:center;gap:8px"><span class="accent-dot"></span> Thank you</span>
+    </div>
+</section>
+
+<script>
+/* Clear stale localStorage from previous version */
+try { localStorage.removeItem('ai-skills-presentation-edits'); } catch(e) {}
+
+/* ===========================================
+   SLIDE PRESENTATION CONTROLLER
+   =========================================== */
+class SlidePresentation {
+    constructor() {
+        this.slides = document.querySelectorAll('.slide');
+        this.currentSlide = 0;
+        this.isScrolling = false;
+        this.setupIntersectionObserver();
+        this.setupKeyboardNav();
+        this.setupTouchNav();
+        this.setupWheelNav();
+        this.setupProgressBar();
+        this.setupNavDots();
+    }
+
+    setupIntersectionObserver() {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    const index = Array.from(this.slides).indexOf(entry.target);
+                    this.currentSlide = index;
+                    this.updateProgressBar();
+                    this.updateNavDots();
+                }
+            });
+        }, { threshold: 0.5 });
+        this.slides.forEach(slide => observer.observe(slide));
+    }
+
+    setupKeyboardNav() {
+        document.addEventListener('keydown', (e) => {
+            if (e.target.getAttribute('contenteditable')) return;
+            switch(e.key) {
+                case 'ArrowDown': case 'ArrowRight': case ' ': case 'PageDown':
+                    e.preventDefault();
+                    this.goToSlide(this.currentSlide + 1);
+                    break;
+                case 'ArrowUp': case 'ArrowLeft': case 'PageUp':
+                    e.preventDefault();
+                    this.goToSlide(this.currentSlide - 1);
+                    break;
+                case 'Home':
+                    e.preventDefault();
+                    this.goToSlide(0);
+                    break;
+                case 'End':
+                    e.preventDefault();
+                    this.goToSlide(this.slides.length - 1);
+                    break;
+            }
+        });
+    }
+
+    setupTouchNav() {
+        let startY = 0;
+        document.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; });
+        document.addEventListener('touchend', (e) => {
+            const diff = startY - e.changedTouches[0].clientY;
+            if (Math.abs(diff) > 50) {
+                diff > 0 ? this.goToSlide(this.currentSlide + 1) : this.goToSlide(this.currentSlide - 1);
+            }
+        });
+    }
+
+    setupWheelNav() {
+        let lastScroll = 0;
+        document.addEventListener('wheel', (e) => {
+            const now = Date.now();
+            if (now - lastScroll < 800) return;
+            lastScroll = now;
+            if (e.deltaY > 0) this.goToSlide(this.currentSlide + 1);
+            else if (e.deltaY < 0) this.goToSlide(this.currentSlide - 1);
+        }, { passive: true });
+    }
+
+    goToSlide(index) {
+        if (index < 0 || index >= this.slides.length) return;
+        this.currentSlide = index;
+        this.slides[index].scrollIntoView({ behavior: 'smooth' });
+    }
+
+    setupProgressBar() {
+        this.progressBar = document.getElementById('progressBar');
+        this.updateProgressBar();
+    }
+
+    updateProgressBar() {
+        if (!this.progressBar) return;
+        const progress = ((this.currentSlide + 1) / this.slides.length) * 100;
+        this.progressBar.style.width = progress + '%';
+    }
+
+    setupNavDots() {
+        const container = document.getElementById('navDots');
+        if (!container) return;
+        container.innerHTML = '';
+        this.slides.forEach((slide, i) => {
+            const dot = document.createElement('button');
+            dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+            dot.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+            dot.addEventListener('click', () => this.goToSlide(i));
+            container.appendChild(dot);
+        });
+    }
+
+    updateNavDots() {
+        const dots = document.querySelectorAll('.nav-dot');
+        dots.forEach((dot, i) => {
+            dot.classList.toggle('active', i === this.currentSlide);
+        });
+    }
+}
+
+/* ===========================================
+   INLINE EDITING SYSTEM
+   =========================================== */
+class InlineEditor {
+    constructor() {
+        this.isActive = false;
+        this.storageKey = 'ai-skills-presentation-edits';
+        this.setupToggle();
+        this.setupHotzone();
+        this.setupKeyboard();
+        this.loadSavedEdits();
+    }
+
+    setupToggle() {
+        document.getElementById('editToggle').addEventListener('click', () => this.toggleEditMode());
+    }
+
+    setupHotzone() {
+        const hotzone = document.getElementById('editHotzone');
+        const toggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+
+        hotzone.addEventListener('mouseenter', () => {
+            clearTimeout(hideTimeout);
+            toggle.classList.add('show');
+        });
+        hotzone.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => { if (!this.isActive) toggle.classList.remove('show'); }, 400);
+        });
+        toggle.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+        toggle.addEventListener('mouseleave', () => {
+            hideTimeout = setTimeout(() => { if (!this.isActive) toggle.classList.remove('show'); }, 400);
+        });
+        hotzone.addEventListener('click', () => this.toggleEditMode());
+    }
+
+    setupKeyboard() {
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) {
+                this.toggleEditMode();
+            }
+            if (e.ctrlKey && e.key === 's' && this.isActive) {
+                e.preventDefault();
+                this.exportFile();
+            }
+        });
+    }
+
+    toggleEditMode() {
+        this.isActive = !this.isActive;
+        const toggle = document.getElementById('editToggle');
+        const banner = document.getElementById('editBanner');
+
+        if (this.isActive) {
+            document.body.classList.add('edit-active');
+            toggle.classList.add('active');
+            toggle.textContent = '✅ Done';
+            banner.classList.add('active');
+            document.querySelectorAll('h1,h2,h3,p,span,li,strong,div.slide-subtitle,div.timeline-text,div.quote-attr').forEach(el => {
+                if (!el.closest('.nav-dots') && !el.closest('.edit-banner') && !el.closest('.slide-nav') && !el.closest('.slide-footer') && !el.closest('.slide-number')) {
+                    el.setAttribute('contenteditable', 'true');
+                }
+            });
+        } else {
+            document.body.classList.remove('edit-active');
+            toggle.classList.remove('active');
+            toggle.textContent = '✏️ Edit';
+            banner.classList.remove('active');
+            document.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+            this.saveEdits();
+        }
+    }
+
+    saveEdits() {
+        const data = { _slideCount: document.querySelectorAll('.slide').length };
+        document.querySelectorAll('.slide').forEach((slide, i) => {
+            data['slide-' + i] = slide.innerHTML;
+        });
+        try { localStorage.setItem(this.storageKey, JSON.stringify(data)); } catch(e) {}
+    }
+
+    loadSavedEdits() {
+        try {
+            const data = JSON.parse(localStorage.getItem(this.storageKey));
+            if (!data) return;
+            const slides = document.querySelectorAll('.slide');
+            if (data._slideCount && data._slideCount !== slides.length) {
+                localStorage.removeItem(this.storageKey);
+                return;
+            }
+            slides.forEach((slide, i) => {
+                if (data['slide-' + i]) slide.innerHTML = data['slide-' + i];
+            });
+        } catch(e) {}
+    }
+
+    exportFile() {
+        const editableEls = Array.from(document.querySelectorAll('[contenteditable]'));
+        editableEls.forEach(el => el.removeAttribute('contenteditable'));
+        document.body.classList.remove('edit-active');
+
+        const editToggle = document.getElementById('editToggle');
+        const editBanner = document.querySelector('.edit-banner');
+        editToggle?.classList.remove('active', 'show');
+        editBanner?.classList.remove('active', 'show');
+
+        const navDots = document.getElementById('navDots');
+        if (navDots) navDots.innerHTML = '';
+
+        const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+
+        document.body.classList.add('edit-active');
+        editableEls.forEach(el => el.setAttribute('contenteditable', 'true'));
+        editToggle?.classList.add('active');
+        editBanner?.classList.add('active');
+
+        const blob = new Blob([html], { type: 'text/html' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'ai-skills-presentation.html';
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+}
+
+new SlidePresentation();
+const editor = new InlineEditor();
+</script>
+</body>
+</html>
