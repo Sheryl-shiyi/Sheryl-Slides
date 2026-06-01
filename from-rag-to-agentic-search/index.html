@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>From RAG to Agentic Search</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* === RESET === */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* === VIEWPORT BASE (MANDATORY) === */
+html, body { height: 100%; overflow-x: hidden; }
+html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+.slide {
+  width: 100vw; height: 100vh; height: 100dvh;
+  overflow: hidden; scroll-snap-align: start;
+  display: flex; flex-direction: column; position: relative;
+}
+.slide-content {
+  flex: 1; display: flex; flex-direction: column;
+  justify-content: center; max-height: 100%; overflow: hidden;
+  padding: var(--slide-padding);
+}
+:root {
+  --title-size: clamp(1.5rem, 5vw, 4rem);
+  --h2-size: clamp(1.25rem, 3.5vw, 2.5rem);
+  --h3-size: clamp(1rem, 2.5vw, 1.75rem);
+  --body-size: clamp(0.75rem, 1.5vw, 1.125rem);
+  --small-size: clamp(0.65rem, 1vw, 0.875rem);
+  --slide-padding: clamp(1rem, 4vw, 4rem);
+  --content-gap: clamp(0.5rem, 2vw, 2rem);
+  --element-gap: clamp(0.25rem, 1vw, 1rem);
+}
+.card, .container, .content-box { max-width: min(90vw, 1000px); max-height: min(80vh, 700px); }
+.feature-list, .bullet-list { gap: clamp(0.4rem, 1vh, 1rem); }
+.feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.4; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: clamp(0.5rem, 1.5vw, 1rem);
+}
+img, .image-container { max-width: 100%; max-height: min(50vh, 400px); object-fit: contain; }
+@media (max-height: 700px) {
+  :root { --slide-padding: clamp(0.75rem, 3vw, 2rem); --content-gap: clamp(0.4rem, 1.5vw, 1rem); --title-size: clamp(1.25rem, 4.5vw, 2.5rem); --h2-size: clamp(1rem, 3vw, 1.75rem); }
+}
+@media (max-height: 600px) {
+  :root { --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem); --content-gap: clamp(0.3rem, 1vw, 0.75rem); --title-size: clamp(1.1rem, 4vw, 2rem); --body-size: clamp(0.7rem, 1.2vw, 0.95rem); }
+  .nav-dots, .keyboard-hint, .decorative { display: none; }
+}
+@media (max-height: 500px) {
+  :root { --slide-padding: clamp(0.4rem, 2vw, 1rem); --title-size: clamp(1rem, 3.5vw, 1.5rem); --h2-size: clamp(0.9rem, 2.5vw, 1.25rem); --body-size: clamp(0.65rem, 1vw, 0.85rem); }
+}
+@media (max-width: 600px) {
+  :root { --title-size: clamp(1.25rem, 7vw, 2.5rem); }
+  .grid { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+  html { scroll-behavior: auto; }
+}
+
+/* === BOLD SIGNAL THEME === */
+:root {
+  --bg-primary: #1a1a1a;
+  --bg-gradient: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+  --card-bg: #FF5722;
+  --card-bg-alt: #FF7043;
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255,255,255,0.55);
+  --text-on-card: #1a1a1a;
+  --accent: #FF5722;
+  --accent-subtle: rgba(255,87,34,0.15);
+  --font-display: 'Archivo Black', sans-serif;
+  --font-body: 'Space Grotesk', sans-serif;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body { font-family: var(--font-body); background: var(--bg-primary); color: var(--text-primary); }
+
+/* === SLIDE LAYOUTS === */
+.slide { background: var(--bg-gradient); }
+
+.slide-number {
+  position: absolute; top: clamp(1.5rem, 3vw, 3rem); left: clamp(1.5rem, 3vw, 3rem);
+  font-family: var(--font-display); font-size: clamp(0.6rem, 1vw, 0.85rem);
+  color: var(--text-secondary); letter-spacing: 2px; z-index: 2;
+}
+.nav-breadcrumb {
+  position: absolute; top: clamp(1.5rem, 3vw, 3rem); right: clamp(1.5rem, 3vw, 3rem);
+  font-family: var(--font-body); font-size: clamp(0.45rem, 0.7vw, 0.6rem);
+  color: rgba(255,255,255,0.2); letter-spacing: 1px; text-transform: uppercase; z-index: 2;
+}
+.nav-breadcrumb .active { color: rgba(255,255,255,0.7); }
+
+h1 { font-family: var(--font-display); font-size: var(--title-size); line-height: 1.05; color: var(--text-primary); }
+h2 { font-family: var(--font-display); font-size: var(--h2-size); line-height: 1.1; color: var(--text-primary); }
+h3 { font-family: var(--font-display); font-size: var(--h3-size); line-height: 1.2; }
+p, li { font-family: var(--font-body); font-size: var(--body-size); line-height: 1.55; color: var(--text-secondary); }
+
+.accent-text { color: var(--accent); }
+.tag {
+  display: inline-block; font-family: var(--font-body); font-weight: 600;
+  font-size: clamp(0.5rem, 0.8vw, 0.7rem); background: var(--accent);
+  color: var(--text-on-card); padding: 0.25em 0.7em; border-radius: 4px;
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.ref {
+  position: absolute; bottom: clamp(1rem, 2vw, 2rem); left: clamp(1.5rem, 3vw, 3rem);
+  right: clamp(1.5rem, 3vw, 3rem);
+  font-family: var(--font-body); font-size: clamp(0.45rem, 0.65vw, 0.55rem);
+  color: rgba(255,255,255,0.25); z-index: 2;
+}
+.ref a { color: rgba(255,255,255,0.35); text-decoration: none; border-bottom: 1px solid rgba(255,255,255,0.15); }
+.ref a:hover { color: var(--accent); border-color: var(--accent); }
+
+/* Orange card component */
+.orange-card {
+  background: var(--card-bg); border-radius: 12px;
+  padding: clamp(1rem, 2.5vw, 2.5rem); color: var(--text-on-card);
+}
+.orange-card h3 { color: var(--text-on-card); }
+.orange-card p, .orange-card li { color: rgba(26,26,26,0.75); }
+
+/* Two-column layout */
+.two-col { display: flex; gap: clamp(1.5rem, 3vw, 3rem); align-items: flex-start; }
+.two-col > * { flex: 1; }
+@media (max-width: 768px) { .two-col { flex-direction: column; } }
+
+/* Pipeline / flow diagrams */
+.pipeline {
+  display: flex; align-items: center; gap: clamp(0.3rem, 0.8vw, 0.8rem);
+  flex-wrap: wrap; justify-content: center;
+}
+.pipeline-step {
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px; padding: clamp(0.4rem, 1vw, 0.8rem) clamp(0.6rem, 1.2vw, 1.2rem);
+  font-size: clamp(0.6rem, 1vw, 0.85rem); font-weight: 500; text-align: center;
+  color: var(--text-primary);
+}
+.pipeline-step.highlight { background: var(--accent); color: var(--text-on-card); border-color: var(--accent); }
+.pipeline-arrow { font-size: clamp(0.7rem, 1.2vw, 1rem); color: var(--text-secondary); }
+
+/* Comparison table */
+.compare-table {
+  width: 100%; border-collapse: collapse;
+  font-size: clamp(0.55rem, 0.95vw, 0.8rem);
+}
+.compare-table th {
+  font-family: var(--font-display); font-size: clamp(0.5rem, 0.85vw, 0.7rem);
+  text-align: left; padding: clamp(0.3rem, 0.6vw, 0.5rem) clamp(0.4rem, 0.8vw, 0.8rem);
+  border-bottom: 2px solid var(--accent); color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px;
+}
+.compare-table td {
+  padding: clamp(0.25rem, 0.5vw, 0.4rem) clamp(0.4rem, 0.8vw, 0.8rem);
+  border-bottom: 1px solid rgba(255,255,255,0.06); color: var(--text-secondary); vertical-align: top;
+}
+.compare-table tr:hover td { background: rgba(255,255,255,0.03); }
+.compare-table .row-label { color: var(--text-primary); font-weight: 600; white-space: nowrap; }
+
+/* Feature grid cards */
+.feat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: clamp(0.5rem, 1.2vw, 1rem); }
+@media (max-width: 768px) { .feat-grid { grid-template-columns: 1fr; } }
+.feat-card {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px; padding: clamp(0.6rem, 1.5vw, 1.5rem);
+}
+.feat-card h3 { font-size: clamp(0.7rem, 1.2vw, 1rem); margin-bottom: 0.3em; }
+.feat-card p { font-size: clamp(0.55rem, 0.9vw, 0.78rem); }
+
+/* Timeline */
+.timeline { display: flex; flex-direction: column; gap: clamp(0.3rem, 0.7vw, 0.6rem); }
+.timeline-item {
+  display: flex; align-items: flex-start; gap: clamp(0.5rem, 1vw, 1rem);
+}
+.timeline-year {
+  font-family: var(--font-display); font-size: clamp(0.6rem, 1vw, 0.85rem);
+  color: var(--accent); min-width: clamp(2.5rem, 4vw, 3.5rem); flex-shrink: 0;
+}
+.timeline-dot {
+  width: 8px; height: 8px; background: var(--accent); border-radius: 50%;
+  margin-top: 0.4em; flex-shrink: 0;
+}
+.timeline-text { flex: 1; }
+.timeline-text strong { color: var(--text-primary); }
+
+/* Architecture diagram */
+.arch-diagram { text-align: center; }
+.arch-row { display: flex; justify-content: center; gap: clamp(0.4rem, 0.8vw, 0.7rem); flex-wrap: wrap; margin: clamp(0.3rem, 0.6vw, 0.5rem) 0; }
+.arch-box {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px; padding: clamp(0.3rem, 0.7vw, 0.6rem) clamp(0.5rem, 1vw, 1rem);
+  font-size: clamp(0.5rem, 0.85vw, 0.72rem); font-weight: 500; text-align: center;
+}
+.arch-box.main { background: var(--accent); color: var(--text-on-card); border-color: var(--accent); font-weight: 700; }
+.arch-box.agent { background: rgba(255,87,34,0.15); border-color: rgba(255,87,34,0.4); }
+.arch-connector { color: var(--text-secondary); font-size: clamp(0.7rem, 1vw, 0.9rem); text-align: center; }
+
+/* Product logos row */
+.product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: clamp(0.5rem, 1vw, 1rem); }
+.product-card {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px; padding: clamp(0.5rem, 1.2vw, 1.2rem);
+}
+.product-card .product-name {
+  font-family: var(--font-display); font-size: clamp(0.6rem, 1vw, 0.85rem);
+  color: var(--text-primary); margin-bottom: 0.3em;
+}
+.product-card .product-desc { font-size: clamp(0.5rem, 0.8vw, 0.7rem); }
+
+/* Animations */
+.reveal { opacity: 0; transform: translateY(25px); transition: opacity 0.6s var(--ease-out-expo), transform 0.6s var(--ease-out-expo); }
+.slide.visible .reveal { opacity: 1; transform: translateY(0); }
+.reveal:nth-child(1) { transition-delay: 0.05s; }
+.reveal:nth-child(2) { transition-delay: 0.12s; }
+.reveal:nth-child(3) { transition-delay: 0.19s; }
+.reveal:nth-child(4) { transition-delay: 0.26s; }
+.reveal:nth-child(5) { transition-delay: 0.33s; }
+.reveal:nth-child(6) { transition-delay: 0.4s; }
+
+/* Progress bar */
+.progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--accent); z-index: 9999; transition: width 0.3s ease; }
+
+/* Nav dots */
+.nav-dots { position: fixed; right: clamp(0.8rem, 1.5vw, 1.5rem); top: 50%; transform: translateY(-50%); z-index: 100; display: flex; flex-direction: column; gap: 8px; }
+.nav-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.2); cursor: pointer; transition: all 0.3s; border: none; padding: 0; }
+.nav-dot.active { background: var(--accent); transform: scale(1.3); }
+
+/* Edit mode */
+.edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+.edit-toggle {
+  position: fixed; top: 16px; left: 16px; width: 36px; height: 36px;
+  background: var(--accent); color: var(--text-on-card); border: none; border-radius: 8px;
+  font-size: 16px; cursor: pointer; z-index: 10001;
+  opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+}
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+.edit-banner {
+  position: fixed; top: 0; left: 0; right: 0; height: 32px;
+  background: var(--accent); color: var(--text-on-card);
+  font-family: var(--font-body); font-size: 12px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  z-index: 9998; transform: translateY(-100%); transition: transform 0.3s;
+}
+.edit-banner.active { transform: translateY(0); }
+body.edit-active [contenteditable] { outline: 1px dashed rgba(255,87,34,0.4); outline-offset: 2px; cursor: text; }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+<nav class="nav-dots" id="navDots"></nav>
+<div class="edit-hotzone" id="editHotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Edit mode (E)">&#9998;</button>
+<div class="edit-banner" id="editBanner">EDIT MODE &mdash; Click any text to edit &bull; Ctrl+S to save</div>
+
+<!-- ==============================
+     SLIDE 1: TITLE
+     ============================== -->
+<section class="slide" data-section="INTRO">
+  <div class="nav-breadcrumb"><span class="active">INTRO</span> / EVOLUTION / AGENTIC / INDUSTRY / CASE STUDY</div>
+  <div style="display:flex; height:100%;">
+    <div style="width:55%; display:flex; flex-direction:column; justify-content:flex-end; padding:var(--slide-padding); position:relative; z-index:2;">
+      <div class="slide-number reveal">01</div>
+      <h1 class="reveal" style="margin-bottom:var(--content-gap);">From RAG to<br><span class="accent-text">Agentic Search</span></h1>
+      <p class="reveal" style="max-width:500px;">The evolution of AI information retrieval: from static pipelines to autonomous, multi-agent reasoning systems.</p>
+      <div class="reveal" style="margin-top:var(--content-gap);"><span class="tag">2026 Edition</span></div>
+    </div>
+    <div style="width:45%; position:relative;">
+      <div class="orange-card reveal" style="position:absolute; top:8%; right:5%; width:85%; height:84%; display:flex; flex-direction:column; justify-content:center;">
+        <p style="font-size:clamp(0.5rem,0.8vw,0.7rem); text-transform:uppercase; letter-spacing:1px; opacity:0.6; margin-bottom:var(--content-gap);">Technical Deep Dive</p>
+        <h3 style="font-size:clamp(1.2rem,3vw,2.2rem); margin-bottom:var(--element-gap);">A Guide for AI Practitioners</h3>
+        <p>Concepts, architecture patterns, industry landscape, and a real-world case study.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==============================
+     SLIDE 2: WHAT IS RAG?
+     ============================== -->
+<section class="slide" data-section="INTRO">
+  <div class="nav-breadcrumb"><span class="active">INTRO</span> / EVOLUTION / AGENTIC / INDUSTRY / CASE STUDY</div>
+  <div class="slide-content">
+    <div class="slide-number reveal">02</div>
+    <h2 class="reveal" style="margin-bottom:var(--content-gap);">What is RAG?</h2>
+    <p class="reveal" style="margin-bottom:var(--content-gap); max-width:700px;">Retrieval-Augmented Generation combines an LLM with an external knowledge source. Instead of relying solely on trained parameters, the model retrieves relevant documents before generating an answer.</p>
+    <div class="reveal pipeline" style="margin-bottom:var(--content-gap);">
+      <div class="pipeline-step">User Query</div>
+      <span class="pipeline-arrow">&rarr;</span>
+      <div class="pipeline-step highlight">Retrieve</div>
+      <span class="pipeline-arrow">&rarr;</span>
+      <div class="pipeline-step">Augment Prompt</div>
+      <span class="pipeline-arrow">&rarr;</span>
+      <div class="pipeline-step highlight">Generate</div>
+      <span class="pipeline-arrow">&rarr;</span>
+      <div class="pipeline-step">Answer</div>
+    </div>
+    <div class="reveal orange-card" style="max-width:600px;">
+      <h3 style="font-size:clamp(0.7rem,1.1vw,0.9rem); margin-bottom:0.3em;">Key Insight</h3>
+      <p style="font-size:clamp(0.6rem,0.95vw,0.8rem);">RAG separates <strong>what the model knows</strong> (parametric memory) from <strong>what it can look up</strong> (non-parametric memory). This was a breakthrough for reducing hallucination.</p>
+    </div>
+  </div>
+  <div class="ref reveal">Lewis et al., "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks," NeurIPS 2020 &mdash; <a href="https://arxiv.org/abs/2005.11401" target="_blank">arxiv.org/abs/2005.11401</a></div>
+</section>
+
+<!-- ==============================
+     SLIDE 3: RAG'S LIMITATIONS
+     ============================== -->
+<section class="slide" data-section="INTRO">
+  <div class="nav-breadcrumb"><span class="active">INTRO</span> / EVOLUTION / AGENTIC / INDUSTRY / CASE STUDY</div>
+  <div class="slide-content">
+    <div class="slide-number reveal">03</div>
+    <h2 class="reveal" style="margin-bottom:var(--content-gap);">Why RAG Wasn't Enough</h2>
+    <div class="reveal feat-grid">
+      <div class="feat-card">
+        <h3>Single-Shot Retrieval</h3>
+        <p>One query, one retrieval pass. If the first search misses, the answer is wrong. No retry, no refinement.</p>
+      </div>
+      <div class="feat-card">
+        <h3>Static Pipeline</h3>
+        <p>Data flows in one direction. The system cannot decide to search differently based on what it finds.</p>
+      </div>
+      <div class="feat-card">
+        <h3>Single Source</h3>
+        <p>Typically one vector database. Cannot reason across web, documents, APIs, and databases simultaneously.</p>
+      </div>
+      <div class="feat-card">
+        <h3>No Self-Correction</h3>
+        <p>No mechanism to evaluate retrieval quality. Returns confident answers even from weak evidence.</p>
+      </div>
+    </div>
+    <p class="reveal" style="margin-top:var(--content-gap); font-size:var(--small-size); color:rgba(255,255,255,0.35);">McKinsey 2026: 58% of enterprise AI teams that deployed standard RAG identified "multi-step reasoning over heterogeneous data sources" as their top limitation.</p>
+  </div>
+</section>
+
+<!-- ==============================
+     SLIDE 4: EVOLUTION TIMELINE
+     ============================== -->
+<section class="slide" data-section="EVOLUTION">
+  <div class="nav-breadcrumb">INTRO / <span class="active">EVOLUTION</span> / AGENTIC / INDUSTRY / CASE STUDY</div>
+  <div class="slide-content">
+    <div class="slide-number reveal">04</div>
+    <h2 class="reveal" style="margin-bottom:var(--content-gap);">The Evolution of RAG</h2>
+    <div class="reveal timeline">
+      <div class="timeline-item">
+        <span class="timeline-year">2020</span>
+        <span class="timeline-dot"></span>
+        <div class="timeline-text"><strong>Naive RAG</strong> &mdash; Simple retrieve-then-generate pipeline (Lewis et al., NeurIPS 2020)</div>
+      </div>
+      <div class="timeline-item">
+        <span class="timeline-year">2022</span>
+        <span class="timeline-dot"></span>
+        <div class="timeline-text"><strong>Advanced RAG</strong> &mdash; Query rewriting, HyDE, re-ranking, hybrid search (Gao et al.)</div>
+      </div>
+      <div class="timeline-item">
+        <span class="timeline-year">2023</span>
+        <span class="timeline-dot"></span>
+        <div class="timeline-text"><strong>Modular RAG</strong> &mdash; Plug-and-play modules: search, memory, fusion, routing (Gao et al. Survey)</div>
+      </div>
+      <div class="timeline-item">
+        <span class="timeline-year">2023-24</span>
+        <span class="timeline-dot"></span>
+        <div class="timeline-text"><strong>Self-Correcting RAG</strong> &mdash; Self-RAG (Asai et al.) + CRAG (Yan et al.): systems learn to evaluate and retry</div>
+      </div>
+      <div class="timeline-item">
+        <span class="timeline-year">2024</span>
+        <span class="timeline-dot"></span>
+        <div class="timeline-text"><strong>Graph RAG</strong> &mdash; Knowledge graphs + RAG for multi-hop reasoning (Microsoft Research)</div>
+      </div>
+      <div class="timeline-item">
+        <span class="timeline-year">2025</span>
+        <span class="timeline-dot"></span>
+        <div class="timeline-text"><strong style="color:var(--accent);">Agentic RAG</strong> &mdash; Autonomous agents orchestrate retrieval (Singh et al. Survey, Jan 2025)</div>
+      </div>
+    </div>
+  </div>
+  <div class="ref reveal">Gao et al. Survey: <a href="https://arxiv.org/abs/2312.10997" target="_blank">arxiv.org/abs/2312.10997</a> &bull; Self-RAG: <a href="https://arxiv.org/abs/2310.11511" target="_blank">arxiv.org/abs/2310.11511</a> &bull; CRAG: <a href="https://arxiv.org/abs/2401.15884" target="_blank">arxiv.org/abs/2401.15884</a> &bull; GraphRAG: <a href="https://arxiv.org/abs/2404.16130" target="_blank">arxiv.org/abs/2404.16130</a></div>
+</section>
+
+<!-- ==============================
+     SLIDE 5: ENTER AGENTIC RAG
+     ============================== -->
+<section class="slide" data-section="EVOLUTION">
+  <div class="nav-breadcrumb">INTRO / <span class="active">EVOLUTION</span> / AGENTIC / INDUSTRY / CASE STUDY</div>
+  <div class="slide-content">
+    <div class="slide-number reveal">05</div>
+    <h2 class="reveal" style="margin-bottom:var(--content-gap);">From Pipeline to Control Loop</h2>
+    <div class="reveal two-col">
+      <div>
+        <h3 style="font-size:clamp(0.75rem,1.2vw,1rem); margin-bottom:var(--element-gap); opacity:0.5;">BEFORE: RAG Pipeline</h3>
+        <div class="pipeline" style="flex-direction:column; align-items:flex-start;">
+          <div class="pipeline-step" style="width:100%; opacity:0.6;">Query &rarr; Embed &rarr; Retrieve &rarr; Generate &rarr; Answer</div>
+        </div>
+        <p style="margin-top:var(--element-gap); font-size:var(--small-size);">Linear. One direction. No feedback. If retrieval fails, the answer fails.</p>
+      </div>
+      <div>
+        <h3 style="font-size:clamp(0.75rem,1.2vw,1rem); margin-bottom:var(--element-gap); color:var(--accent);">AFTER: Agentic Loop</h3>
+        <div class="pipeline" style="flex-direction:column; align-items:flex-start; gap:clamp(0.2rem,0.4vw,0.3rem);">
+          <div class="pipeline-step highlight" style="width:100%;">Interpret &rarr; Plan &rarr; Retrieve &rarr; Evaluate</div>
+          <div style="text-align:center; width:100%; font-size:var(--small-size); color:var(--accent);">&darr; not good enough? &darr;</div>
+          <div class="pipeline-step highlight" style="width:100%;">Rewrite Query &rarr; Try Different Source &rarr; Re-evaluate</div>
+          <div style="text-align:center; width:100%; font-size:var(--small-size); color:var(--accent);">&darr; satisfied? &darr;</div>
+          <div class="pipeline-step highlight" style="width:100%;">Synthesize &rarr; Cite &rarr; Verify &rarr; Generate</div>
+        </div>
+      </div>
+    </div>
+    <p class="reveal" style="margin-top:var(--content-gap); font-size:var(--small-size); max-width:700px;">The agent decides <em>when</em> to retrieve, <em>what</em> to retrieve, <em>where</em> to retrieve from, and <em>whether</em> to iterate. This transforms retrieval from a fixed step into an adaptive reasoning process.</p>
+  </div>
+  <div class="ref reveal">Singh et al., "Agentic RAG: A Survey on Agentic RAG," Jan 2025 &mdash; <a href="https://arxiv.org/abs/2501.09136" target="_blank">arxiv.org/abs/2501.09136</a></div>
+</section>
+
+<!-- ==============================
+     SLIDE 6: WHAT IS AGENTIC SEARCH
+     ============================== -->
+<section class="slide" data-section="AGENTIC">
+  <div class="nav-breadcrumb">INTRO / EVOLUTION / <span class="active">AGENTIC</span> / INDUSTRY / CASE STUDY</div>
+  <div class="slide-content">
+    <div class="slide-number reveal">06</div>
+    <h2 class="reveal" style="margin-bottom:var(--content-gap);">What is Agentic Search?</h2>
+    <div class="reveal orange-card" style="max-width:750px; margin-bottom:var(--content-gap);">
+      <p style="font-size:clamp(0.7rem,1.2vw,1rem); font-weight:500; font-style:italic;">"RAG retrieves. Agentic search reasons about what to retrieve, evaluates the results, and iterates. The difference is the reasoning loop."</p>
+      <p style="font-size:clamp(0.5rem,0.8vw,0.7rem); margin-top:0.5em; opacity:0.6;">&mdash; Boris Cherny, The Agentic Engineering Guide</p>
+    </div>
+    <div class="reveal two-col" style="max-width:800px;">
+      <div>
+        <h3 style="font-size:clamp(0.7rem,1.1vw,0.9rem); margin-bottom:0.5em;">Agentic RAG</h3>
+        <ul class="bullet-list" style="list-style:none; padding:0;">
+          <li>Enhances the full RAG pipeline with agents</li>
+          <li>Still centers on retrieval + generation</li>
+          <li>Often uses vector databases</li>
+          <li>Scope: Enterprise knowledge Q&A</li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="font-size:clamp(0.7rem,1.1vw,0.9rem); margin-bottom:0.5em; color:var(--accent);">Agentic Search</h3>
+        <ul class="bullet-list" style="list-style:none; padding:0;">
+          <li>Makes the search process itself intelligent</li>
+          <li>No vector DB required</li>
+          <li>Searches heterogeneous sources directly</li>
+          <li>Scope: Deep research, multi-source discovery</li>
+        </ul>
+      </div>
+    </div>
+    <p class="reveal" style="margin-top:var(--element-gap); font-size:var(--small-size);">In practice, agentic search is often a <em>component within</em> an agentic RAG system.</p>
+  </div>
+  <div class="ref reveal"><a href="https://agents.siddhantkhare.com/06-rag-vs-agentic-search/" target="_blank">The Agentic Engineering Guide, Ch. 6</a> &bull; <a href="https://arxiv.org/html/2603.07379v1" target="_blank">SoK: Agentic RAG (arXiv:2603.07379, Mar 2026)</a></div>
+</section>
+
+<!-- ==============================
+     SLIDE 7: FOUR AGENTIC DESIGN PATTERNS
+     ============================== -->
+<section class="slide" data-section="AGENTIC">
+  <div class="nav-breadcrumb">INTRO / EVOLUTION / <span class="active">AGENTIC</span> / INDUSTRY / CASE STUDY</div>
+  <div class="slide-content">
+    <div class="slide-number reveal">07</div>
+    <h2 class="reveal" style="margin-bottom:var(--content-gap);">Four Agentic Design Patterns</h2>
+    <div class="reveal feat-grid">
+      <div class="feat-card">
+        <h3><span class="accent-text">01</span> Reflection</h3>
+        <p>Agent examines its own output and iterates. Can use a separate "critic agent" for adversarial feedback. The most mature pattern.</p>
+      </div>
+      <div class="feat-card">
+        <h3><span class="accent-text">02</span> Tool Use</h3>
+        <p>Agent calls external APIs, code interpreters, databases, web search. The fundamental building block for all other patterns.</p>
+      </div>
+      <div class="feat-card">
+        <h3><span class="accent-text">03</span> Planning</h3>
+        <p>Agent decomposes complex tasks into sub-goals. Powerful but less predictable. Enables multi-step reasoning chains.</p>
+      </div>
+      <div class="feat-card">
+        <h3><span class="accent-text">04</span> Multi-Agent</h3>
+        <p>Specialized agents collaborate with distinct roles: researcher, reviewer, synthesizer. Extends beyond single-agent loops.</p>
+      </div>
+    </div>
+  </div>
+  <div class="ref reveal">Andrew Ng, "Agentic Design Patterns," DeepLearning.AI / Snowflake BUILD, Mar 2024 &bull; Formalized in <a href="https://arxiv.org/abs/2601.19752" target="_blank">arXiv:2601.19752</a> (Jan 2026)</div>
+</section>
+
+<!-- ==============================
+     SLIDE 8: FAN-OUT / FAN-IN ARCHITECTURE
+     ============================== -->
+<section class="slide" data-section="AGENTIC">
+  <div class="nav-breadcrumb">INTRO / EVOLUTION / <span class="active">AGENTIC</span> / INDUSTRY / CASE STUDY</div>
+  <div class="slide-content">
+    <div class="slide-number reveal">08</div>
+    <h2 class="reveal" style="margin-bottom:var(--content-gap);">Core Pattern: Fan-Out / Fan-In</h2>
+    <div class="reveal arch-diagram">
+      <div class="arch-row"><div class="arch-box main" style="min-width:200px;">Orchestrator Agent</div></div>
+      <div class="arch-connector">&darr; decomposes query &darr;</div>
+      <div class="arch-row">
+        <div class="arch-box agent">Source A<br>Agent</div>
+        <div class="arch-box agent">Source B<br>Agent</div>
+        <div class="arch-box agent">Source C<br>Agent</div>
+        <div class="arch-box agent">Web Search<br>Agent</div>
+      </div>
+      <div class="arch-connector">&darr; parallel search &darr;</div>
+      <div class="arch-row"><div class="arch-box main" style="min-width:200px;">Synthesis Agent</div></div>
+      <div class="arch-connector">&darr;</div>
+      <div class="arch-row"><div class="arch-box" style="min-width:200px;">Validation &amp; Answer</div></div>
+    </div>
+    <p class="reveal" style="margin-top:var(--content-gap); font-size:var(--small-size); text-align:center; max-width:650px; margin-left:auto; margin-right:auto;">Multiple specialist agents search different data sources in parallel. A synthesis agent merges findings, resolves conflicts, and produces a unified answer. Google Cloud identifies this as the "Parallel Pattern" in their agentic AI design framework.</p>
+  </div>
+  <div class="ref reveal">Google Cloud, "<a href="https://docs.cloud.google.com/architecture/choose-design-pattern-agentic-ai-system" target="_blank">Choose a Design Pattern for Agentic AI</a>" &mdash; Parallel Pattern</div>
+</section>
+
+<!-- ==============================
+     SLIDE 9: COMPARISON TABLE
+     ============================== -->
+<section class="slide" data-section="AGENTIC">
+  <div class="nav-breadcrumb">INTRO / EVOLUTION / <span class="active">AGENTIC</span> / INDUSTRY / CASE STUDY</div>
+  <div class="slide-content">
+    <div class="slide-number reveal">09</div>
+    <h2 class="reveal" style="margin-bottom:var(--content-gap);">Side-by-Side Comparison</h2>
+    <div class="reveal" style="overflow-x:auto;">
+      <table class="compare-table">
+        <thead>
+          <tr><th></th><th>Naive RAG</th><th>Advanced RAG</th><th>Agentic RAG</th><th style="color:var(--accent);">Agentic Search</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="row-label">Architecture</td><td>Linear pipeline</td><td>Enhanced pipeline</td><td>Control loop</td><td>Agent-driven search loop</td></tr>
+          <tr><td class="row-label">Retrieval</td><td>Single-shot, top-k</td><td>Re-ranked, rewritten</td><td>Adaptive, iterative</td><td>Fan-out, multi-source</td></tr>
+          <tr><td class="row-label">Data Sources</td><td>One vector DB</td><td>One vector DB (optimized)</td><td>Multiple (DB, API, web)</td><td>Any: files, web, APIs</td></tr>
+          <tr><td class="row-label">Self-Correction</td><td>None</td><td>Re-ranking only</td><td>Evaluate &amp; retry</td><td>Evaluate, rewrite, iterate</td></tr>
+          <tr><td class="row-label">Vector DB Required</td><td>Yes</td><td>Yes</td><td>Usually</td><td>No</td></tr>
+          <tr><td class="row-label">Latency</td><td>Fast (~1s)</td><td>Moderate (~2-5s)</td><td>Higher (~5-30s)</td><td>Highest (~10s-30min)</td></tr>
+          <tr><td class="row-label">Best For</td><td>Simple factual Q&A</td><td>Better factual Q&A</td><td>Complex enterprise Q&A</td><td>Deep research, multi-hop</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ==============================
+     SLIDE 10: INDUSTRY LANDSCAPE
+     ============================== -->
+<section class="slide" data-section="INDUSTRY">
+  <div class="nav-breadcrumb">INTRO / EVOLUTION / AGENTIC / <span class="active">INDUSTRY</span> / CASE STUDY</div>
+  <div class="slide-content">
+    <div class="slide-number reveal">10</div>
+    <h2 class="reveal" style="margin-bottom:var(--content-gap);">Industry Landscape: 2025-2026</h2>
+    <div class="reveal product-grid">
+      <div class="product-card">
+        <div class="product-name">Google AI Mode</div>
+        <p class="product-desc">1B+ monthly users. Query fan-out architecture powered by Gemini 3.5 Flash. Information Agents launched May 2026 for 24/7 background research.</p>
+      </div>
+      <div class="product-card">
+        <div class="product-name">Perplexity Deep Research</div>
+        <p class="product-desc">Plan-and-execute paradigm. Dozens of searches, hundreds of sources, iterative refinement. 93.9% on SimpleQA benchmark.</p>
+      </div>
+      <div class="product-card">
+        <div class="product-name">OpenAI Deep Research</div>
+        <p class="product-desc">Autonomous web browsing for up to 30 minutes. Three-agent pipeline with coverage-based early stopping. MCP support added Feb 2026.</p>
+      </div>
+      <div class="product-card">
+        <div class="product-name">Azure Agentic Retrieval</div>
+        <p class="product-desc">GA April 2026. Multi-query decomposition, parallel sub-queries. Each Knowledge Base is a standalone MCP server.</p>
+      </div>
+    </div>
+  </div>
+  <div class="ref reveal"><a href="https://blog.google/products-and-platforms/products/search/search-io-2026/" target="_blank">Google I/O 2026</a> &bull; <a href="https://learn.microsoft.com/en-us/azure/search/agentic-retrieval-overview" target="_blank">Azure Agentic Retrieval</a> &bull; <a href="https://openai.com/index/introducing-deep-research/" target="_blank">OpenAI Deep Research</a></div>
+</section>
+
+<!-- ==============================
+     SLIDE 11: ANTHROPIC'S APPROACH
+     ============================== -->
+<section class="slide" data-section="INDUSTRY">
+  <div class="nav-breadcrumb">INTRO / EVOLUTION / AGENTIC / <span class="active">INDUSTRY</span> / CASE STUDY</div>
+  <div class="slide-content">
+    <div class="slide-number reveal">11</div>
+    <h2 class="reveal" style="margin-bottom:var(--content-gap);">Anthropic's Approach</h2>
+    <div class="reveal two-col">
+      <div>
+        <div class="orange-card" style="margin-bottom:var(--element-gap);">
+          <p style="font-size:clamp(0.6rem,0.95vw,0.82rem); font-weight:500; font-style:italic;">"Early versions of Claude Code used RAG + a local vector db, but we found pretty quickly that agentic search generally works better."</p>
+          <p style="font-size:clamp(0.45rem,0.7vw,0.6rem); margin-top:0.4em; opacity:0.6;">&mdash; Boris Cherny, creator of Claude Code</p>
+        </div>
+        <div class="feat-card" style="margin-bottom:var(--element-gap);">
+          <h3>Orchestrator-Workers Pattern</h3>
+          <p>Lead Researcher agent spawns parallel subagents, each searching independently. Results written to shared memory, then synthesized and cited.</p>
+        </div>
+        <div class="feat-card">
+          <h3>Three Tracks</h3>
+          <p><strong>Code</strong>: agentic search (no vector DB). <strong>Docs</strong>: Contextual Retrieval (improved RAG, -67% failure). <strong>Research</strong>: multi-agent orchestrator-workers.</p>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; justify-content:center;">
+        <img src="assets/anthropic-multi-agent-research.png" alt="Anthropic Multi-Agent Research Architecture" style="max-height:min(45vh,350px); width:100%; object-fit:contain; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
+        <p style="font-size:clamp(0.4rem,0.6vw,0.5rem); color:rgba(255,255,255,0.3); margin-top:0.5em; text-align:center;">Source: Anthropic Engineering Blog</p>
+      </div>
+    </div>
+  </div>
+  <div class="ref reveal"><a href="https://www.anthropic.com/engineering/multi-agent-research-system" target="_blank">How We Built Our Multi-Agent Research System</a> &bull; <a href="https://www.anthropic.com/research/building-effective-agents" target="_blank">Building Effective AI Agents</a> &bull; <a href="https://www.anthropic.com/news/contextual-retrieval" target="_blank">Contextual Retrieval</a></div>
+</section>
+
+<!-- ==============================
+     SLIDE 12: CASE STUDY INTRO
+     ============================== -->
+<section class="slide" data-section="CASE STUDY">
+  <div class="nav-breadcrumb">INTRO / EVOLUTION / AGENTIC / INDUSTRY / <span class="active">CASE STUDY</span></div>
+  <div class="slide-content">
+    <div class="slide-number reveal">12</div>
+    <h2 class="reveal" style="margin-bottom:var(--content-gap);">Case Study: RFP Response Skill</h2>
+    <p class="reveal" style="margin-bottom:var(--content-gap); max-width:700px;">A real-world Claude Code skill that uses the Agentic Search pattern to answer batch RFP questions about Red Hat AI products. No vector database, no pre-built index. Agents search raw documentation files and web sources directly.</p>
+    <div class="reveal two-col">
+      <div class="orange-card">
+        <h3 style="font-size:clamp(0.7rem,1.1vw,0.9rem); margin-bottom:0.5em;">The Problem</h3>
+        <p style="font-size:clamp(0.55rem,0.9vw,0.78rem);">Answering 30-50 RFP questions across 3 products (RHOAI, RHEL AI, RHAII), requiring accurate, cited responses from 5+ documentation repos and public web sources.</p>
+      </div>
+      <div class="feat-card">
+        <h3>Why Not Traditional RAG?</h3>
+        <ul class="bullet-list" style="list-style:none; padding:0;">
+          <li>Docs update frequently; no time to rebuild vector index</li>
+          <li>Questions span 3 distinct products</li>
+          <li>Answers need cross-product synthesis</li>
+          <li>Local .adoc files + web: heterogeneous sources</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==============================
+     SLIDE 13: ARCHITECTURE DIAGRAM
+     ============================== -->
+<section class="slide" data-section="CASE STUDY">
+  <div class="nav-breadcrumb">INTRO / EVOLUTION / AGENTIC / INDUSTRY / <span class="active">CASE STUDY</span></div>
+  <div class="slide-content">
+    <div class="slide-number reveal">13</div>
+    <h2 class="reveal" style="margin-bottom:var(--content-gap);">RFP Skill: Fan-Out / Fan-In Architecture</h2>
+    <div class="reveal arch-diagram">
+      <div class="arch-row"><div class="arch-box main" style="min-width:220px;">Main Agent (Orchestrator)</div></div>
+      <div class="arch-connector">&darr; fan-out per question group &darr;</div>
+      <div class="arch-row">
+        <div class="arch-box agent">RHOAI<br>Docs Agent</div>
+        <div class="arch-box agent">RHEL AI<br>Docs Agent</div>
+        <div class="arch-box agent">RHAII<br>Docs Agent</div>
+        <div class="arch-box agent">Pred AI<br>Lab Agent</div>
+        <div class="arch-box agent">GenAI<br>Lab Agent</div>
+        <div class="arch-box agent">Web<br>Search Agent</div>
+      </div>
+      <div class="arch-connector">&darr; parallel search across all sources &darr;</div>
+      <div class="arch-row"><div class="arch-box main" style="min-width:220px;">Synthesize into Draft Answers</div></div>
+      <div class="arch-connector">&darr;</div>
+      <div class="arch-row">
+        <div class="arch-box">User Review &amp; Confirm</div>
+        <div class="arch-box agent">Reviewer Agent</div>
+      </div>
+    </div>
+    <p class="reveal" style="margin-top:var(--element-gap); font-size:var(--small-size); text-align:center;">Only agents for the user's selected target products are spawned. The Reviewer Agent checks accuracy, consistency, scope leakage, and terminology.</p>
+  </div>
+</section>
+
+<!-- ==============================
+     SLIDE 14: WORKFLOW WALKTHROUGH
+     ============================== -->
+<section class="slide" data-section="CASE STUDY">
+  <div class="nav-breadcrumb">INTRO / EVOLUTION / AGENTIC / INDUSTRY / <span class="active">CASE STUDY</span></div>
+  <div class="slide-content">
+    <div class="slide-number reveal">14</div>
+    <h2 class="reveal" style="margin-bottom:var(--content-gap);">Workflow: Agentic Patterns in Action</h2>
+    <div class="reveal" style="display:grid; grid-template-columns:auto 1fr; gap:clamp(0.3rem,0.6vw,0.5rem) clamp(0.8rem,1.5vw,1.5rem); align-items:start;">
+      <span class="tag" style="font-size:clamp(0.4rem,0.65vw,0.55rem);">PLANNING</span>
+      <p style="font-size:clamp(0.6rem,0.95vw,0.8rem);"><strong>Scope &amp; Discover</strong> &mdash; Select target products, auto-discover local doc repos (3-tier: find &rarr; ask user &rarr; web fallback), group questions by theme.</p>
+      <span class="tag" style="font-size:clamp(0.4rem,0.65vw,0.55rem);">TOOL USE</span>
+      <p style="font-size:clamp(0.6rem,0.95vw,0.8rem);"><strong>Parallel Research</strong> &mdash; Fan-out agents searching local .adoc files (grep, find, read) and web (redhat.com, docs.redhat.com). Each agent returns raw findings independently.</p>
+      <span class="tag" style="font-size:clamp(0.4rem,0.65vw,0.55rem);">MULTI-AGENT</span>
+      <p style="font-size:clamp(0.6rem,0.95vw,0.8rem);"><strong>Synthesize</strong> &mdash; Main agent merges findings from all research agents, attributes capabilities to correct products, resolves contradictions.</p>
+      <span class="tag" style="font-size:clamp(0.4rem,0.65vw,0.55rem);">REFLECTION</span>
+      <p style="font-size:clamp(0.6rem,0.95vw,0.8rem);"><strong>Review</strong> &mdash; Reviewer agent checks technical accuracy, logical consistency, scope leakage, and terminology. Corrections are applied iteratively.</p>
+    </div>
+    <p class="reveal" style="margin-top:var(--content-gap); font-size:var(--small-size);">All four of Andrew Ng's agentic design patterns are present in a single workflow. The skill also uses calibration (draft Group 1 first for user feedback) and incremental file saves to handle long sessions.</p>
+  </div>
+</section>
+
+<!-- ==============================
+     SLIDE 15: CLOSING
+     ============================== -->
+<section class="slide" data-section="CLOSING">
+  <div style="display:flex; height:100%;">
+    <div style="width:55%; display:flex; flex-direction:column; justify-content:center; padding:var(--slide-padding); position:relative; z-index:2;">
+      <div class="slide-number reveal">15</div>
+      <h2 class="reveal" style="margin-bottom:var(--content-gap);">Key Takeaways</h2>
+      <ul class="reveal bullet-list" style="list-style:none; padding:0; margin-bottom:var(--content-gap);">
+        <li style="margin-bottom:var(--element-gap);"><span class="accent-text" style="font-weight:700;">01</span> &nbsp; RAG evolved from static pipelines to autonomous agent-driven systems in just 5 years (2020-2025).</li>
+        <li style="margin-bottom:var(--element-gap);"><span class="accent-text" style="font-weight:700;">02</span> &nbsp; Agentic Search = reasoning loop over search. No vector DB required. Agent decides what, where, and how to search.</li>
+        <li style="margin-bottom:var(--element-gap);"><span class="accent-text" style="font-weight:700;">03</span> &nbsp; The Fan-Out/Fan-In pattern (parallel agents + synthesis) is the dominant architecture in 2026.</li>
+        <li><span class="accent-text" style="font-weight:700;">04</span> &nbsp; All four agentic patterns (reflection, tool use, planning, multi-agent) compose naturally in real-world systems.</li>
+      </ul>
+    </div>
+    <div style="width:45%; position:relative;">
+      <div class="orange-card reveal" style="position:absolute; top:8%; right:5%; width:85%; height:84%; display:flex; flex-direction:column; justify-content:center;">
+        <h3 style="font-size:clamp(0.7rem,1.1vw,0.9rem); margin-bottom:var(--element-gap);">Essential Papers</h3>
+        <ul style="list-style:none; padding:0; font-size:clamp(0.5rem,0.8vw,0.7rem);">
+          <li style="margin-bottom:0.5em;"><a href="https://arxiv.org/abs/2005.11401" target="_blank" style="color:var(--text-on-card); text-decoration:underline;">Lewis et al. 2020</a> &mdash; Original RAG (NeurIPS)</li>
+          <li style="margin-bottom:0.5em;"><a href="https://arxiv.org/abs/2312.10997" target="_blank" style="color:var(--text-on-card); text-decoration:underline;">Gao et al. 2023</a> &mdash; RAG Survey &amp; Taxonomy</li>
+          <li style="margin-bottom:0.5em;"><a href="https://arxiv.org/abs/2210.03629" target="_blank" style="color:var(--text-on-card); text-decoration:underline;">Yao et al. 2022</a> &mdash; ReAct (ICLR 2023)</li>
+          <li style="margin-bottom:0.5em;"><a href="https://arxiv.org/abs/2310.11511" target="_blank" style="color:var(--text-on-card); text-decoration:underline;">Asai et al. 2023</a> &mdash; Self-RAG (ICLR 2024)</li>
+          <li style="margin-bottom:0.5em;"><a href="https://arxiv.org/abs/2501.09136" target="_blank" style="color:var(--text-on-card); text-decoration:underline;">Singh et al. 2025</a> &mdash; Agentic RAG Survey</li>
+          <li><a href="https://arxiv.org/abs/2603.07379" target="_blank" style="color:var(--text-on-card); text-decoration:underline;">SoK 2026</a> &mdash; Agentic RAG Taxonomy</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+/* === SLIDE PRESENTATION CONTROLLER === */
+class SlidePresentation {
+  constructor() {
+    this.slides = document.querySelectorAll('.slide');
+    this.currentSlide = 0;
+    this.navDotsContainer = document.getElementById('navDots');
+    this.progressBar = document.getElementById('progressBar');
+    this.setupIntersectionObserver();
+    this.setupKeyboardNav();
+    this.setupTouchNav();
+    this.setupNavDots();
+  }
+
+  setupIntersectionObserver() {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          const idx = Array.from(this.slides).indexOf(entry.target);
+          this.currentSlide = idx;
+          this.updateProgress();
+          this.updateNavDots();
+        }
+      });
+    }, { threshold: 0.3 });
+    this.slides.forEach(slide => observer.observe(slide));
+  }
+
+  setupKeyboardNav() {
+    document.addEventListener('keydown', (e) => {
+      if (e.target.getAttribute && e.target.getAttribute('contenteditable')) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        this.goTo(Math.min(this.currentSlide + 1, this.slides.length - 1));
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        this.goTo(Math.max(this.currentSlide - 1, 0));
+      } else if (e.key === 'Home') {
+        e.preventDefault(); this.goTo(0);
+      } else if (e.key === 'End') {
+        e.preventDefault(); this.goTo(this.slides.length - 1);
+      }
+    });
+  }
+
+  setupTouchNav() {
+    let startY = 0;
+    document.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true });
+    document.addEventListener('touchend', e => {
+      const diff = startY - e.changedTouches[0].clientY;
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) this.goTo(Math.min(this.currentSlide + 1, this.slides.length - 1));
+        else this.goTo(Math.max(this.currentSlide - 1, 0));
+      }
+    }, { passive: true });
+  }
+
+  setupNavDots() {
+    this.navDotsContainer.innerHTML = '';
+    this.slides.forEach((_, i) => {
+      const dot = document.createElement('button');
+      dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+      dot.addEventListener('click', () => this.goTo(i));
+      this.navDotsContainer.appendChild(dot);
+    });
+  }
+
+  updateNavDots() {
+    this.navDotsContainer.querySelectorAll('.nav-dot').forEach((dot, i) => {
+      dot.classList.toggle('active', i === this.currentSlide);
+    });
+  }
+
+  updateProgress() {
+    const pct = ((this.currentSlide + 1) / this.slides.length) * 100;
+    this.progressBar.style.width = pct + '%';
+  }
+
+  goTo(idx) {
+    this.slides[idx].scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+/* === INLINE EDITOR === */
+class InlineEditor {
+  constructor() {
+    this.isActive = false;
+    this.editToggle = document.getElementById('editToggle');
+    this.editBanner = document.getElementById('editBanner');
+    this.editHotzone = document.getElementById('editHotzone');
+    this.setupHotzone();
+    this.setupKeyboard();
+    this.editToggle.addEventListener('click', () => this.toggleEditMode());
+    this.editHotzone.addEventListener('click', () => this.toggleEditMode());
+  }
+
+  setupHotzone() {
+    let hideTimeout = null;
+    const show = () => { clearTimeout(hideTimeout); this.editToggle.classList.add('show'); };
+    const hide = () => { hideTimeout = setTimeout(() => { if (!this.isActive) this.editToggle.classList.remove('show'); }, 400); };
+    this.editHotzone.addEventListener('mouseenter', show);
+    this.editHotzone.addEventListener('mouseleave', hide);
+    this.editToggle.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+    this.editToggle.addEventListener('mouseleave', hide);
+  }
+
+  setupKeyboard() {
+    document.addEventListener('keydown', (e) => {
+      if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) this.toggleEditMode();
+      if (e.ctrlKey && e.key === 's' && this.isActive) { e.preventDefault(); this.exportFile(); }
+    });
+  }
+
+  toggleEditMode() {
+    this.isActive = !this.isActive;
+    document.body.classList.toggle('edit-active', this.isActive);
+    this.editToggle.classList.toggle('active', this.isActive);
+    this.editBanner.classList.toggle('active', this.isActive);
+    this.editToggle.innerHTML = this.isActive ? '&#10003;' : '&#9998;';
+    document.querySelectorAll('h1,h2,h3,p,li,span.tag,.product-name,.product-desc,.feat-card h3,.feat-card p,td').forEach(el => {
+      if (this.isActive) el.setAttribute('contenteditable', 'true');
+      else el.removeAttribute('contenteditable');
+    });
+    if (this.isActive) { localStorage.setItem('presentation-edit-state', document.body.innerHTML); }
+  }
+
+  exportFile() {
+    const editableEls = Array.from(document.querySelectorAll('[contenteditable]'));
+    editableEls.forEach(el => el.removeAttribute('contenteditable'));
+    document.body.classList.remove('edit-active');
+    this.editToggle.classList.remove('active', 'show');
+    this.editBanner.classList.remove('active', 'show');
+    const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    document.body.classList.add('edit-active');
+    editableEls.forEach(el => el.setAttribute('contenteditable', 'true'));
+    this.editToggle.classList.add('active');
+    this.editBanner.classList.add('active');
+    const blob = new Blob([html], { type: 'text/html' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'from-rag-to-agentic-search.html';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+}
+
+new SlidePresentation();
+const editor = new InlineEditor();
+</script>
+</body>
+</html>
