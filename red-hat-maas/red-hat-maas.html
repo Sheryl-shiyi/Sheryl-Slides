@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red Hat Models as a Service (MaaS)</title>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;700;900&family=Red+Hat+Text:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (THEME)
+           =========================================== */
+        :root {
+            --red: #EE0000;
+            --red-dark: #CC0000;
+            --dark: #151515;
+            --dark-secondary: #333333;
+            --text-primary: #151515;
+            --text-secondary: #555555;
+            --text-muted: #888888;
+            --bg-white: #ffffff;
+            --bg-light: #f8f8f8;
+            --bg-subtle: #f0f0f0;
+            --border-light: #e0e0e0;
+            --stage-bg: #0a0a0a;
+            --slide-bg: #ffffff;
+
+            --font-display: 'Red Hat Display', sans-serif;
+            --font-body: 'Red Hat Text', sans-serif;
+
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.6s;
+        }
+
+        /* ===========================================
+           RESET
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===========================================
+           FIXED 16:9 STAGE: MANDATORY BASE STYLES
+           =========================================== */
+        html, body {
+            width: 100%; height: 100%; margin: 0; overflow: hidden;
+            background: var(--stage-bg, #000);
+        }
+        .deck-viewport {
+            position: fixed; inset: 0; overflow: hidden;
+            background: var(--stage-bg, #000);
+        }
+        .deck-stage {
+            position: absolute; left: 0; top: 0;
+            width: 1920px; height: 1080px; overflow: hidden;
+            transform-origin: 0 0;
+            background: var(--slide-bg, #fff);
+        }
+        .slide {
+            position: absolute; inset: 0;
+            width: 1920px; height: 1080px; overflow: hidden;
+            display: block; visibility: hidden; opacity: 0; pointer-events: none;
+            background: var(--slide-bg, #fff);
+            font-family: var(--font-body);
+            color: var(--text-primary);
+        }
+        .slide.active, .slide.visible {
+            visibility: visible; opacity: 1; pointer-events: auto; z-index: 1;
+        }
+        img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+        .deck-controls {
+            position: fixed; left: 50%; bottom: 22px;
+            transform: translateX(-50%); z-index: 1000;
+        }
+        @media print {
+            html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+            .deck-viewport { position: static; overflow: visible; background: #fff; }
+            .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+            .slide { position: relative; display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important; width: 1920px; height: 1080px; break-after: page; page-break-after: always; }
+            .slide:last-child { break-after: auto; page-break-after: auto; }
+            .deck-controls { display: none !important; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+        }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0; transform: translateY(24px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+        .slide.visible .reveal:nth-child(1) { transition-delay: 0.1s; }
+        .slide.visible .reveal:nth-child(2) { transition-delay: 0.2s; }
+        .slide.visible .reveal:nth-child(3) { transition-delay: 0.3s; }
+        .slide.visible .reveal:nth-child(4) { transition-delay: 0.4s; }
+        .slide.visible .reveal:nth-child(5) { transition-delay: 0.5s; }
+        .slide.visible .reveal:nth-child(6) { transition-delay: 0.6s; }
+
+        .reveal-left {
+            opacity: 0; transform: translateX(-30px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal-left { opacity: 1; transform: translateX(0); }
+
+        /* ===========================================
+           COMMON SLIDE LAYOUT
+           =========================================== */
+        .slide-inner {
+            width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+        }
+        .top-bar {
+            width: 100%; height: 6px;
+            background: var(--red); flex-shrink: 0;
+        }
+        .slide-body {
+            flex: 1; display: flex; flex-direction: column;
+            padding: 60px 100px 40px;
+            position: relative;
+        }
+        .slide-footer {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 100px 30px;
+            font-size: 16px; color: var(--text-muted);
+        }
+        .slide-footer .logo-text {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: 18px; color: var(--red);
+        }
+        .slide-counter {
+            font-family: var(--font-body); font-weight: 500;
+        }
+
+        /* Section tag */
+        .section-tag {
+            font-family: var(--font-display); font-size: 18px; font-weight: 600;
+            color: var(--red); text-transform: uppercase; letter-spacing: 3px;
+            margin-bottom: 18px;
+        }
+
+        /* Slide titles */
+        .slide-title {
+            font-family: var(--font-display); font-size: 58px; font-weight: 900;
+            line-height: 1.1; color: var(--text-primary); margin-bottom: 14px;
+        }
+        .slide-subtitle {
+            font-size: 28px; font-weight: 400; color: var(--text-secondary);
+            line-height: 1.5; margin-bottom: 40px;
+        }
+
+        /* ===========================================
+           SLIDE 1: TITLE
+           =========================================== */
+        .title-slide .slide-body {
+            justify-content: center; padding: 80px 140px;
+        }
+        .title-slide .tag-line {
+            font-family: var(--font-display); font-size: 18px; font-weight: 500;
+            color: var(--red); text-transform: uppercase; letter-spacing: 3px;
+            margin-bottom: 40px;
+        }
+        .title-slide h1 {
+            font-family: var(--font-display); font-size: 82px; font-weight: 900;
+            line-height: 1.05; color: var(--text-primary); margin-bottom: 28px;
+        }
+        .title-slide h1 .red { color: var(--red); }
+        .title-slide .subtitle-text {
+            font-size: 30px; font-weight: 400; color: var(--text-secondary); line-height: 1.5;
+        }
+        .title-slide .corner-decor {
+            position: absolute; right: 100px; top: 80px;
+            width: 180px; height: 180px;
+        }
+        .title-slide .corner-decor::before {
+            content: ''; position: absolute; right: 0; top: 0;
+            width: 180px; height: 180px;
+            border: 3px solid rgba(238,0,0,0.08); border-radius: 50%;
+        }
+        .title-slide .corner-decor::after {
+            content: ''; position: absolute; right: 40px; top: 40px;
+            width: 100px; height: 100px;
+            border: 2px solid rgba(238,0,0,0.12); border-radius: 50%;
+        }
+
+        /* ===========================================
+           SLIDE 2: SHADOW AI PROBLEM
+           =========================================== */
+        .problem-cards {
+            display: flex; gap: 30px; margin-bottom: 30px;
+        }
+        .problem-card {
+            flex: 1; background: var(--bg-light); border-radius: 12px;
+            padding: 30px 28px;
+        }
+        .problem-card h3 {
+            font-family: var(--font-display); font-size: 26px; font-weight: 700;
+            color: var(--red); margin-bottom: 18px;
+        }
+        .problem-card ul {
+            list-style: none; padding: 0;
+        }
+        .problem-card li {
+            font-size: 18px; line-height: 1.5; color: var(--text-secondary);
+            padding: 6px 0 6px 20px; position: relative;
+        }
+        .problem-card li::before {
+            content: '\25B8'; position: absolute; left: 0; color: var(--red);
+        }
+
+        .solution-banner {
+            background: var(--dark); color: #fff; border-radius: 10px;
+            padding: 20px 36px; text-align: center;
+            font-size: 22px; font-weight: 400; margin-bottom: 26px;
+        }
+        .solution-banner strong { font-weight: 700; }
+        .solution-banner .red-text { color: var(--red); font-weight: 700; }
+
+        .solution-steps {
+            display: flex; gap: 24px;
+        }
+        .solution-step {
+            flex: 1; display: flex; gap: 18px; align-items: flex-start;
+            background: var(--bg-light); border-radius: 10px; padding: 22px 22px;
+        }
+        .step-num {
+            font-family: var(--font-display); font-size: 40px; font-weight: 900;
+            color: var(--red); line-height: 1; flex-shrink: 0;
+        }
+        .step-content h4 {
+            font-family: var(--font-display); font-size: 21px; font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .step-content p {
+            font-size: 17px; color: var(--text-secondary); line-height: 1.5;
+        }
+
+        /* ===========================================
+           SLIDE 3: WHAT IS MAAS
+           =========================================== */
+        .definition-block {
+            background: var(--bg-light); border-left: 5px solid var(--red);
+            padding: 30px 36px; border-radius: 0 12px 12px 0;
+            margin-bottom: 40px;
+        }
+        .definition-block p {
+            font-family: var(--font-display); font-size: 30px; font-weight: 500;
+            color: var(--text-primary); line-height: 1.5; font-style: italic;
+        }
+        .benefits-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+        }
+        .benefit-item {
+            display: flex; align-items: flex-start; gap: 16px;
+            padding: 20px 24px; background: var(--bg-white);
+            border: 1px solid var(--border-light); border-radius: 10px;
+        }
+        .benefit-icon {
+            width: 50px; height: 50px; background: rgba(238,0,0,0.08);
+            border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            font-size: 24px; flex-shrink: 0; color: var(--red); font-weight: 700;
+        }
+        .benefit-item h4 {
+            font-family: var(--font-display); font-size: 22px; font-weight: 700; margin-bottom: 4px;
+        }
+        .benefit-item p {
+            font-size: 19px; color: var(--text-secondary); line-height: 1.4;
+        }
+        .ga-badge {
+            display: inline-block; background: var(--red); color: #fff;
+            font-family: var(--font-display); font-size: 14px; font-weight: 700;
+            padding: 5px 16px; border-radius: 20px; margin-left: 16px;
+            vertical-align: middle;
+        }
+
+        /* ===========================================
+           SLIDE 4: AI GATEWAY ARCHITECTURE
+           =========================================== */
+        .arch-layout {
+            display: flex; gap: 50px; flex: 1; align-items: stretch;
+        }
+        .arch-diagram {
+            flex: 1.1; display: flex; flex-direction: column; gap: 14px;
+        }
+        .arch-box {
+            background: var(--bg-light); border-radius: 10px; padding: 16px 24px;
+            border: 1px solid var(--border-light); text-align: center;
+        }
+        .arch-box.dark {
+            background: var(--dark); color: #fff; border-color: var(--dark);
+        }
+        .arch-box.red-header {
+            background: var(--red); color: #fff; border-color: var(--red);
+            font-family: var(--font-display); font-weight: 700; font-size: 26px;
+        }
+        .arch-box .label {
+            font-family: var(--font-display); font-weight: 700; font-size: 21px;
+        }
+        .arch-box .desc {
+            font-size: 16px; color: var(--text-muted); margin-top: 4px;
+        }
+        .arch-box.dark .desc { color: rgba(255,255,255,0.6); }
+        .arch-sub-row {
+            display: flex; gap: 12px;
+        }
+        .arch-sub-box {
+            flex: 1; background: var(--bg-white); border: 1px solid var(--border-light);
+            border-radius: 8px; padding: 14px 16px;
+        }
+        .arch-sub-box .sub-title {
+            font-family: var(--font-display); font-weight: 700; font-size: 18px;
+            color: var(--text-primary); margin-bottom: 6px;
+        }
+        .arch-sub-box ul {
+            list-style: none; padding: 0;
+        }
+        .arch-sub-box li {
+            font-size: 15px; color: var(--text-secondary); line-height: 1.5;
+            padding: 2px 0;
+        }
+        .arch-bottom-row {
+            display: flex; gap: 12px;
+        }
+        .arch-bottom-box {
+            flex: 1; background: rgba(238,0,0,0.04); border: 1px solid rgba(238,0,0,0.15);
+            border-radius: 8px; padding: 14px 18px; text-align: center;
+        }
+        .arch-bottom-box .label {
+            font-family: var(--font-display); font-weight: 700; font-size: 18px;
+        }
+        .arch-bottom-box .desc {
+            font-size: 14px; color: var(--text-muted); margin-top: 2px;
+        }
+        .arch-arrow {
+            text-align: center; font-size: 22px; color: var(--text-muted); line-height: 1;
+        }
+
+        .it-gains {
+            flex: 0.7; display: flex; flex-direction: column; gap: 20px;
+            padding-top: 10px;
+        }
+        .it-gains h3 {
+            font-family: var(--font-display); font-size: 28px; font-weight: 900;
+            margin-bottom: 8px;
+        }
+        .gain-item {
+            border-left: 4px solid var(--red); padding-left: 20px;
+        }
+        .gain-item h4 {
+            font-family: var(--font-display); font-size: 21px; font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .gain-item p {
+            font-size: 16px; color: var(--text-secondary); line-height: 1.5;
+        }
+
+        /* ===========================================
+           SLIDE 5: INFERENCE PLATFORM
+           =========================================== */
+        .platform-layout {
+            display: flex; gap: 40px; flex: 1; align-items: stretch;
+        }
+        .platform-diagram {
+            flex: 1.3; display: flex; flex-direction: column; gap: 10px;
+        }
+        .platform-labels {
+            flex: 0.3; display: flex; flex-direction: column; gap: 10px;
+            justify-content: center; padding-left: 10px;
+        }
+        .plat-label {
+            font-family: var(--font-display); font-size: 19px; font-weight: 700;
+            color: var(--red); text-align: left;
+        }
+        .plat-row {
+            display: flex; gap: 10px; justify-content: center;
+        }
+        .plat-box {
+            background: var(--bg-light); border: 1px solid var(--border-light);
+            border-radius: 8px; padding: 12px 16px; text-align: center;
+            min-width: 140px;
+        }
+        .plat-box.wide {
+            flex: 1; max-width: 100%;
+        }
+        .plat-box.red-bg {
+            background: var(--red); color: #fff; border-color: var(--red);
+        }
+        .plat-box.dark-bg {
+            background: var(--dark); color: #fff; border-color: var(--dark);
+        }
+        .plat-box .name {
+            font-family: var(--font-display); font-weight: 700; font-size: 16px;
+        }
+        .plat-box .sub {
+            font-size: 14px; color: var(--text-muted); margin-top: 2px;
+        }
+        .plat-box.dark-bg .sub, .plat-box.red-bg .sub { color: rgba(255,255,255,0.7); }
+        .plat-connector {
+            text-align: center; font-size: 18px; color: var(--text-muted);
+        }
+
+        /* ===========================================
+           SLIDE 6: KEY CAPABILITIES
+           =========================================== */
+        .capabilities-list {
+            display: flex; flex-direction: column; gap: 20px; flex: 1;
+            justify-content: center;
+        }
+        .capability-row {
+            display: flex; align-items: flex-start; gap: 20px;
+            padding: 22px 28px; background: var(--bg-light); border-radius: 12px;
+            border-left: 4px solid var(--red);
+        }
+        .cap-icon {
+            width: 48px; height: 48px; background: rgba(238,0,0,0.08);
+            border-radius: 12px; display: flex; align-items: center; justify-content: center;
+            font-size: 22px; flex-shrink: 0;
+        }
+        .cap-text h4 {
+            font-family: var(--font-display); font-size: 26px; font-weight: 700; margin-bottom: 6px;
+        }
+        .cap-text p {
+            font-size: 21px; color: var(--text-secondary); line-height: 1.5;
+        }
+
+        /* ===========================================
+           SLIDE 7: HOW IT WORKS
+           =========================================== */
+        .flows-container {
+            display: flex; flex-direction: column; gap: 36px; flex: 1;
+            justify-content: center;
+        }
+        .flow-section h3 {
+            font-family: var(--font-display); font-size: 28px; font-weight: 700;
+            margin-bottom: 20px; display: flex; align-items: center; gap: 14px;
+        }
+        .flow-badge {
+            display: inline-block; background: var(--red); color: #fff;
+            font-size: 16px; font-weight: 700; padding: 5px 18px; border-radius: 16px;
+        }
+        .flow-steps {
+            display: flex; align-items: center; gap: 0;
+        }
+        .flow-step {
+            background: var(--bg-light); border: 1px solid var(--border-light);
+            border-radius: 10px; padding: 20px 26px;
+            font-size: 19px; font-weight: 500; text-align: center;
+            min-width: 180px;
+        }
+        .flow-arrow {
+            font-size: 28px; color: var(--red); padding: 0 14px; flex-shrink: 0;
+        }
+
+        /* ===========================================
+           SCREENSHOT SLIDES (8-16)
+           =========================================== */
+        .screenshot-slide .slide-body {
+            padding: 50px 100px 20px;
+        }
+        .screenshot-container {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .screenshot-container img {
+            max-height: 680px; max-width: 1680px;
+            object-fit: contain; border-radius: 10px;
+            border: 1px solid var(--border-light);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+        }
+        .screenshot-desc {
+            text-align: center; font-size: 20px; color: var(--text-secondary);
+            line-height: 1.5; margin-top: 18px; max-width: 1200px;
+        }
+
+        /* ===========================================
+           SLIDE 17: SUMMARY
+           =========================================== */
+        .summary-list {
+            display: flex; flex-direction: column; gap: 22px;
+            flex: 1; justify-content: center;
+        }
+        .summary-item {
+            display: flex; align-items: flex-start; gap: 20px;
+            padding: 18px 28px; background: var(--bg-light); border-radius: 12px;
+        }
+        .summary-check {
+            width: 36px; height: 36px; background: var(--red); color: #fff;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: 700; flex-shrink: 0;
+        }
+        .summary-item p {
+            font-size: 22px; font-weight: 500; line-height: 1.4; padding-top: 4px;
+        }
+
+        /* ===========================================
+           SLIDE COUNTER
+           =========================================== */
+        .slide-nav {
+            position: fixed; bottom: 28px; right: 40px; z-index: 1000;
+            font-family: var(--font-body); font-size: 16px;
+            color: rgba(255,255,255,0.5); letter-spacing: 1px;
+            background: rgba(0,0,0,0.4); padding: 6px 16px; border-radius: 20px;
+        }
+
+        /* ===========================================
+           INLINE EDITING
+           =========================================== */
+        .edit-hotzone {
+            position: fixed; top: 0; left: 0;
+            width: 80px; height: 80px; z-index: 10000; cursor: pointer;
+        }
+        .edit-toggle {
+            position: fixed; top: 20px; left: 20px;
+            width: 44px; height: 44px; border-radius: 50%;
+            background: var(--dark); color: #fff; border: none;
+            font-size: 18px; cursor: pointer;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 10001;
+        }
+        .edit-toggle.show, .edit-toggle.active {
+            opacity: 1; pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="deck-viewport">
+        <main class="deck-stage" id="deckStage">
+
+            <!-- === SLIDE 1: TITLE === -->
+            <section class="slide title-slide active">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body">
+                        <div class="tag-line reveal">OpenShift AI 3.4</div>
+                        <h1 class="reveal">Red Hat <span class="red">Models as a Service</span></h1>
+                        <div class="subtitle-text reveal">Centralized AI Model Governance on OpenShift AI</div>
+                        <div class="corner-decor"></div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div>2026</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 2: THE SHADOW AI PROBLEM === -->
+            <section class="slide">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body">
+                        <div class="section-tag reveal">The usability problem</div>
+                        <div class="slide-title reveal" style="margin-bottom:8px;">The Shadow AI Problem</div>
+                        <div class="slide-subtitle reveal" style="margin-bottom:24px; color:var(--red); font-weight:500;">Ungoverned API access creates cost, security, and compliance exposure.</div>
+
+                        <div class="problem-cards reveal" style="transition-delay:0.3s;">
+                            <div class="problem-card">
+                                <h3>Uncontrolled Spend</h3>
+                                <ul>
+                                    <li>70-80% of API tokens wasted on tasks that don't need frontier models</li>
+                                    <li>No centralized visibility into per-team, per-app token usage</li>
+                                    <li>CFOs see unpredictable, escalating monthly invoices</li>
+                                </ul>
+                            </div>
+                            <div class="problem-card">
+                                <h3>Data Leakage Risk</h3>
+                                <ul>
+                                    <li>Proprietary code, customer data, and IP sent to public SaaS endpoints</li>
+                                    <li>No PII stripping, no guardrails, no audit trail</li>
+                                    <li>Regulatory and compliance exposure grows with every call</li>
+                                </ul>
+                            </div>
+                            <div class="problem-card">
+                                <h3>Fragmented Operations</h3>
+                                <ul>
+                                    <li>Every team picks their own model, API key, and provider</li>
+                                    <li>Disjoint approaches with repeated lessons learned</li>
+                                    <li>IT has zero visibility into what models are being used or why</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="solution-banner reveal" style="transition-delay:0.4s;">
+                            The answer isn't banning external APIs — it's making what's <strong>best</strong> what's <strong>easiest</strong>, with a <span class="red-text">single control plane.</span>
+                        </div>
+
+                        <div class="solution-steps reveal" style="transition-delay:0.5s;">
+                            <div class="solution-step">
+                                <div class="step-num">1</div>
+                                <div class="step-content">
+                                    <h4>Tame Shadow AI</h4>
+                                    <p>Route all LLM calls through the AI Gateway. Enforce policy based on identity and get instant visibility into consumption.</p>
+                                </div>
+                            </div>
+                            <div class="solution-step">
+                                <div class="step-num">2</div>
+                                <div class="step-content">
+                                    <h4>Choose Smart</h4>
+                                    <p>One API gateway, one access token, many models. Developers self-select the right model — local open-source for routine work, external frontier only when justified.</p>
+                                </div>
+                            </div>
+                            <div class="solution-step">
+                                <div class="step-num">3</div>
+                                <div class="step-content">
+                                    <h4>Bring It Home</h4>
+                                    <p>llm-d intelligently routes inference across tiered NVIDIA silicon — right-sizing every workload for maximum ROI.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div class="slide-counter"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 3: WHAT IS MAAS === -->
+            <section class="slide">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body">
+                        <div class="section-tag reveal">Introduction</div>
+                        <div class="slide-title reveal">What is Models as a Service? <span class="ga-badge">GA in RHOAI 3.4</span></div>
+
+                        <div class="definition-block reveal" style="transition-delay:0.3s;">
+                            <p>"An approach to providing AI models as consumable, shared resources via API endpoints — enabling private, scalable AI adoption across the enterprise."</p>
+                        </div>
+
+                        <div class="benefits-grid">
+                            <div class="benefit-item reveal" style="transition-delay:0.35s;">
+                                <div class="benefit-icon">&#x1F511;</div>
+                                <div>
+                                    <h4>Self-Service Access</h4>
+                                    <p>Developers get fast, secure API access to approved AI models — no IT tickets needed.</p>
+                                </div>
+                            </div>
+                            <div class="benefit-item reveal" style="transition-delay:0.4s;">
+                                <div class="benefit-icon">&#x1F3DB;</div>
+                                <div>
+                                    <h4>Centralized Governance</h4>
+                                    <p>Eliminate shadow AI with centrally managed token quotas, rate limits, and API keys.</p>
+                                </div>
+                            </div>
+                            <div class="benefit-item reveal" style="transition-delay:0.45s;">
+                                <div class="benefit-icon">&#x1F4CA;</div>
+                                <div>
+                                    <h4>Cost Visibility</h4>
+                                    <p>Granular tracking to allocate costs across teams and projects accurately.</p>
+                                </div>
+                            </div>
+                            <div class="benefit-item reveal" style="transition-delay:0.5s;">
+                                <div class="benefit-icon">&#x2638;</div>
+                                <div>
+                                    <h4>Kubernetes-Native</h4>
+                                    <p>All policies managed through standard Kubernetes CRDs — no separate management plane.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="text-align:center; margin-top:28px; font-size:20px; color:var(--text-secondary);" class="reveal" style="transition-delay:0.55s;">
+                            <strong>Vision:</strong> Move from being AI token <em>consumers</em> to becoming your own internal token <em>providers</em>.
+                        </div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div class="slide-counter"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 4: AI GATEWAY ARCHITECTURE === -->
+            <section class="slide">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body">
+                        <div class="section-tag reveal">Workflows and outcomes</div>
+                        <div class="slide-title reveal" style="font-size:44px;">The AI Gateway — Unifying Policy and Observability</div>
+                        <div class="slide-subtitle reveal" style="font-size:18px; margin-bottom:20px; color:var(--red);">Enforce access policies, guardrails, and metrics for inference and tools in one control plane</div>
+
+                        <div class="arch-layout">
+                            <div class="arch-diagram reveal-left" style="transition-delay:0.3s;">
+                                <div class="arch-box" style="background:var(--bg-subtle);">
+                                    <div class="label">Application Requests</div>
+                                    <div class="desc" style="color:var(--text-muted);">Agentic workflows, inference, tool calling</div>
+                                </div>
+                                <div class="arch-arrow">&#x25BC;</div>
+                                <div class="arch-box red-header">Red Hat AI Gateway</div>
+                                <div class="arch-sub-row">
+                                    <div class="arch-sub-box" style="background:rgba(238,0,0,0.04);">
+                                        <div class="sub-title">Models as a Service</div>
+                                    </div>
+                                    <div class="arch-sub-box" style="background:rgba(238,0,0,0.04);">
+                                        <div class="sub-title">MCP Gateway</div>
+                                    </div>
+                                </div>
+                                <div class="arch-sub-row">
+                                    <div class="arch-sub-box">
+                                        <div class="sub-title">RBAC</div>
+                                        <ul><li>Self service with access policy</li><li>Rate limiting per user, group, project</li></ul>
+                                    </div>
+                                    <div class="arch-sub-box">
+                                        <div class="sub-title">Guardrails</div>
+                                        <ul><li>Safety & content filtering</li><li>PII censored</li><li>Input/output detectors</li></ul>
+                                    </div>
+                                    <div class="arch-sub-box">
+                                        <div class="sub-title">Observability</div>
+                                        <ul><li>Token consumption</li><li>Infrastructure & platform usage</li></ul>
+                                    </div>
+                                </div>
+                                <div class="arch-arrow">&#x25BC;</div>
+                                <div class="arch-bottom-row">
+                                    <div class="arch-bottom-box">
+                                        <div class="label">On-Prem</div>
+                                        <div class="desc">vLLM runtime, llm-d intelligent routing, KServe</div>
+                                    </div>
+                                    <div class="arch-bottom-box">
+                                        <div class="label">External APIs*</div>
+                                        <div class="desc">OpenAI, Anthropic, etc. (when justified)</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="it-gains reveal" style="transition-delay:0.5s;">
+                                <h3>What IT Gains</h3>
+                                <div class="gain-item">
+                                    <h4>Visibility & cost control</h4>
+                                    <p>Every token tracked. Every cost attributed. One observability stack for all teams.</p>
+                                </div>
+                                <div class="gain-item">
+                                    <h4>Safety & guardrails</h4>
+                                    <p>Control behavior and prevent data leakage, via policy right at the gateway.</p>
+                                </div>
+                                <div class="gain-item">
+                                    <h4>Developer self-service</h4>
+                                    <p>Developers pick the right model — no ticket, no wait.</p>
+                                </div>
+                                <div class="gain-item">
+                                    <h4>On-prem inference on tiered silicon</h4>
+                                    <p>KServe & llm-d orchestrate vLLM on NVIDIA GPUs. Data never leaves the cluster.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div class="slide-counter"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 5: ENTERPRISE INFERENCE PLATFORM (screenshot) === -->
+            <section class="slide screenshot-slide">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body" style="padding:40px 80px 20px;">
+                        <div class="screenshot-container reveal" style="transition-delay:0.1s;">
+                            <img src="images/enterprise-inference-platform.png" alt="Enterprise GenAI inference platform architecture showing Model as a Service, llm-d, models, vLLM inference servers, and NVIDIA accelerators" style="max-height:940px;">
+                        </div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div class="slide-counter"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 6: KEY CAPABILITIES === -->
+            <section class="slide">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body">
+                        <div class="section-tag reveal">Platform features</div>
+                        <div class="slide-title reveal">MaaS Key Capabilities</div>
+
+                        <div class="capabilities-list">
+                            <div class="capability-row reveal" style="transition-delay:0.2s;">
+                                <div class="cap-icon">&#x1F3AF;</div>
+                                <div class="cap-text">
+                                    <h4>Token Quotas & Rate Limiting</h4>
+                                    <p>Per-team rate limits and token budgets defined via Kubernetes-native CRDs (subscriptions).</p>
+                                </div>
+                            </div>
+                            <div class="capability-row reveal" style="transition-delay:0.3s;">
+                                <div class="cap-icon">&#x1F511;</div>
+                                <div class="cap-text">
+                                    <h4>Self-Service API Keys</h4>
+                                    <p>Developers generate keys scoped to their subscriptions — bound at creation time and instantly revocable.</p>
+                                </div>
+                            </div>
+                            <div class="capability-row reveal" style="transition-delay:0.4s;">
+                                <div class="cap-icon">&#x1F4CA;</div>
+                                <div class="cap-text">
+                                    <h4>Showback Dashboards</h4>
+                                    <p>Aggregate token consumption tracking per model and subscription group, embedded in the dashboard.</p>
+                                </div>
+                            </div>
+                            <div class="capability-row reveal" style="transition-delay:0.5s;">
+                                <div class="cap-icon">&#x1F512;</div>
+                                <div class="cap-text">
+                                    <h4>Enterprise Authentication</h4>
+                                    <p>OIDC-compatible authorization layer supporting Azure AD, Okta, and Keycloak.</p>
+                                </div>
+                            </div>
+                            <div class="capability-row reveal" style="transition-delay:0.6s;">
+                                <div class="cap-icon">&#x1F504;</div>
+                                <div class="cap-text">
+                                    <h4>External Model Routing</h4>
+                                    <p>OpenAI-compatible endpoint routes to local models or external providers. Applications don't need to know where the model runs.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div class="slide-counter"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 7: HOW IT WORKS === -->
+            <section class="slide">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body">
+                        <div class="section-tag reveal">Under the hood</div>
+                        <div class="slide-title reveal">How It Works — Two Key Flows</div>
+
+                        <div class="flows-container">
+                            <div class="flow-section reveal" style="transition-delay:0.3s;">
+                                <h3><span class="flow-badge">Key Minting</span> Getting access to a model</h3>
+                                <div class="flow-steps">
+                                    <div class="flow-step">User authenticates<br><small style="color:var(--text-muted);">(OIDC / OpenShift token)</small></div>
+                                    <div class="flow-arrow">&#x2192;</div>
+                                    <div class="flow-step">Requests API key</div>
+                                    <div class="flow-arrow">&#x2192;</div>
+                                    <div class="flow-step">Key bound to<br>subscription</div>
+                                    <div class="flow-arrow">&#x2192;</div>
+                                    <div class="flow-step" style="border-color:var(--red); border-width:2px;">One-time key<br>returned &#x1F511;</div>
+                                </div>
+                            </div>
+
+                            <div class="flow-section reveal" style="transition-delay:0.5s;">
+                                <h3><span class="flow-badge">Inference</span> Making a model request</h3>
+                                <div class="flow-steps">
+                                    <div class="flow-step">Client sends request<br><small style="color:var(--text-muted);">with API key</small></div>
+                                    <div class="flow-arrow">&#x2192;</div>
+                                    <div class="flow-step">Key validation<br><small style="color:var(--text-muted);">hash lookup + expiry</small></div>
+                                    <div class="flow-arrow">&#x2192;</div>
+                                    <div class="flow-step">Subscription &<br>access check</div>
+                                    <div class="flow-arrow">&#x2192;</div>
+                                    <div class="flow-step">Rate limit<br>check</div>
+                                    <div class="flow-arrow">&#x2192;</div>
+                                    <div class="flow-step" style="border-color:var(--red); border-width:2px;">Request reaches<br>model &#x2705;</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div class="slide-counter"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 8: USER - AI ASSET ENDPOINTS === -->
+            <section class="slide screenshot-slide">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body">
+                        <div class="section-tag reveal">User experience</div>
+                        <div class="slide-title reveal" style="font-size:40px;">Discovering Available Models</div>
+                        <div class="screenshot-container reveal" style="transition-delay:0.3s;">
+                            <img src="images/user-ai-asset-endpoints.png" alt="AI Asset Endpoints page showing available models">
+                            <div class="screenshot-desc">Users browse AI asset endpoints in their project to discover available models, check status, and access playground for testing.</div>
+                        </div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div class="slide-counter"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 9: USER - ENDPOINT DETAILS === -->
+            <section class="slide screenshot-slide">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body">
+                        <div class="section-tag reveal">User experience</div>
+                        <div class="slide-title reveal" style="font-size:40px;">Accessing Model Endpoints</div>
+                        <div class="screenshot-container reveal" style="transition-delay:0.3s;">
+                            <img src="images/user-endpoint-details.png" alt="Model endpoint details with API key generation">
+                            <div class="screenshot-desc">Click "View" on any model to see the external API endpoint URL, select a subscription, and generate a temporary API key — ready to integrate in seconds.</div>
+                        </div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div class="slide-counter"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 10: USER - API KEYS === -->
+            <section class="slide screenshot-slide">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body">
+                        <div class="section-tag reveal">User experience</div>
+                        <div class="slide-title reveal" style="font-size:40px;">Managing API Keys</div>
+                        <div class="screenshot-container reveal" style="transition-delay:0.3s;">
+                            <img src="images/user-api-keys.png" alt="API Keys management page">
+                            <div class="screenshot-desc">The API Keys page provides a central view of all keys — active, expired, and revoked — with subscription binding, creation date, and expiration tracking.</div>
+                        </div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div class="slide-counter"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 11: ADMIN - MODEL DEPLOYMENTS === -->
+            <section class="slide screenshot-slide">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body">
+                        <div class="section-tag reveal">Admin visibility</div>
+                        <div class="slide-title reveal" style="font-size:40px;">Model Deployments Dashboard</div>
+                        <div class="screenshot-container reveal" style="transition-delay:0.3s;">
+                            <img src="images/dashboard-model-deployments.png" alt="Model deployments dashboard">
+                            <div class="screenshot-desc">Admins get a bird's-eye view of all model deployments: total requests, P90 latency, error rates, and GPU/CPU utilization across every model.</div>
+                        </div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div class="slide-counter"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 12: ADMIN - USAGE & TOKENS === -->
+            <section class="slide screenshot-slide">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body">
+                        <div class="section-tag reveal">Admin visibility</div>
+                        <div class="slide-title reveal" style="font-size:40px;">Usage & Token Tracking</div>
+                        <div class="screenshot-container reveal" style="transition-delay:0.3s;">
+                            <img src="images/dashboard-token-usage.png" alt="Usage dashboard with token consumption">
+                            <div class="screenshot-desc">The Usage dashboard aggregates Total Tokens, Requests, Errors, Success Rate, and Active Users — filterable by user, subscription, and model for granular cost attribution.</div>
+                        </div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div class="slide-counter"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 13: ADMIN - PERFORMANCE METRICS === -->
+            <section class="slide screenshot-slide">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body">
+                        <div class="section-tag reveal">Admin visibility</div>
+                        <div class="slide-title reveal" style="font-size:40px;">Performance Metrics</div>
+                        <div class="screenshot-container reveal" style="transition-delay:0.3s;">
+                            <img src="images/dashboard-performance-metrics.png" alt="Performance metrics dashboard">
+                            <div class="screenshot-desc">Detailed metrics: request queue length, replica count, P90 E2E latency, time to first token (TTFT), token throughput, and request success rate — per model over time.</div>
+                        </div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div class="slide-counter"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 14: GOVERNANCE - SUBSCRIPTIONS === -->
+            <section class="slide screenshot-slide">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body">
+                        <div class="section-tag reveal">Governance</div>
+                        <div class="slide-title reveal" style="font-size:40px;">Subscriptions</div>
+                        <div class="screenshot-container reveal" style="transition-delay:0.3s;">
+                            <img src="images/admin-subscriptions.png" alt="Subscriptions management page">
+                            <div class="screenshot-desc">Admins create subscriptions (Free, Standard, Premium) that define which user groups can access which models, with token rate limits — e.g., Free: 100 tokens/hr; Premium: 50,000 tokens/min.</div>
+                        </div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div class="slide-counter"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 15: GOVERNANCE - AUTHORIZATION POLICIES === -->
+            <section class="slide screenshot-slide">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body">
+                        <div class="section-tag reveal">Governance</div>
+                        <div class="slide-title reveal" style="font-size:40px;">Authorization Policies</div>
+                        <div class="screenshot-container reveal" style="transition-delay:0.3s;">
+                            <img src="images/admin-authorization-policies.png" alt="Authorization policies page">
+                            <div class="screenshot-desc">Authorization policies pair with subscriptions to enforce fine-grained access. Example: "free-policy" limits viewers to one model; "premium-policy" gives admin group full access.</div>
+                        </div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div class="slide-counter"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 16: GOVERNANCE - SUBSCRIPTION DETAILS === -->
+            <section class="slide screenshot-slide">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body">
+                        <div class="section-tag reveal">Governance</div>
+                        <div class="slide-title reveal" style="font-size:40px;">Subscription Details</div>
+                        <div class="screenshot-container reveal" style="transition-delay:0.3s;">
+                            <img src="images/admin-subscription-details.png" alt="Subscription configuration details">
+                            <div class="screenshot-desc">Inside a subscription, admins set priority, assign user groups, select models, and configure per-model token limits — all through the OpenShift AI console.</div>
+                        </div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div class="slide-counter"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- === SLIDE 17: SUMMARY === -->
+            <section class="slide">
+                <div class="slide-inner">
+                    <div class="top-bar"></div>
+                    <div class="slide-body">
+                        <div class="section-tag reveal">Key takeaways</div>
+                        <div class="slide-title reveal">MaaS Turns Your Cluster Into an AI Model Provider</div>
+
+                        <div class="summary-list">
+                            <div class="summary-item reveal" style="transition-delay:0.2s;">
+                                <div class="summary-check">&#x2713;</div>
+                                <p><strong>Centralized governance</strong> eliminates Shadow AI — every model call routed through a single control plane.</p>
+                            </div>
+                            <div class="summary-item reveal" style="transition-delay:0.3s;">
+                                <div class="summary-check">&#x2713;</div>
+                                <p><strong>Self-service access</strong> for developers — browse models, generate API keys, start building. No tickets needed.</p>
+                            </div>
+                            <div class="summary-item reveal" style="transition-delay:0.4s;">
+                                <div class="summary-check">&#x2713;</div>
+                                <p><strong>Cost visibility & token attribution</strong> per user, team, and model — CFOs get predictable, explainable AI spend.</p>
+                            </div>
+                            <div class="summary-item reveal" style="transition-delay:0.5s;">
+                                <div class="summary-check">&#x2713;</div>
+                                <p><strong>Kubernetes-native</strong> — no separate management plane. Subscriptions, policies, and rate limits are standard CRDs.</p>
+                            </div>
+                            <div class="summary-item reveal" style="transition-delay:0.6s;">
+                                <div class="summary-check">&#x2713;</div>
+                                <p><strong>Flexible deployment</strong> — on-prem open-source models on GPU-agnostic infrastructure, plus external APIs when justified.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="slide-footer">
+                        <div class="logo-text">Red Hat</div>
+                        <div class="slide-counter"></div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Slide counter -->
+    <div class="slide-nav" id="slideNav">1 / 17</div>
+
+    <!-- Inline editing -->
+    <div class="edit-hotzone" id="editHotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">&#x270F;&#xFE0F;</button>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.total = this.slides.length;
+                this.stage = document.getElementById('deckStage');
+                this.nav = document.getElementById('slideNav');
+                this.setupStageScale();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupWheelNav();
+                this.showSlide(0);
+            }
+
+            setupStageScale() {
+                const scale = () => {
+                    const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+                    const x = (window.innerWidth - 1920 * factor) / 2;
+                    const y = (window.innerHeight - 1080 * factor) / 2;
+                    this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+                };
+                scale();
+                window.addEventListener('resize', scale);
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.target.getAttribute('contenteditable')) return;
+                    switch(e.key) {
+                        case 'ArrowRight': case 'ArrowDown': case ' ': case 'PageDown':
+                            e.preventDefault(); this.next(); break;
+                        case 'ArrowLeft': case 'ArrowUp': case 'PageUp':
+                            e.preventDefault(); this.prev(); break;
+                        case 'Home': e.preventDefault(); this.showSlide(0); break;
+                        case 'End': e.preventDefault(); this.showSlide(this.total - 1); break;
+                    }
+                });
+            }
+
+            setupTouchNav() {
+                let startX = 0, startY = 0;
+                this.stage.addEventListener('touchstart', (e) => {
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                }, { passive: true });
+                this.stage.addEventListener('touchend', (e) => {
+                    const dx = e.changedTouches[0].clientX - startX;
+                    const dy = e.changedTouches[0].clientY - startY;
+                    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+                        dx < 0 ? this.next() : this.prev();
+                    }
+                }, { passive: true });
+            }
+
+            setupWheelNav() {
+                let lastWheel = 0;
+                document.addEventListener('wheel', (e) => {
+                    const now = Date.now();
+                    if (now - lastWheel < 800) return;
+                    lastWheel = now;
+                    e.deltaY > 0 ? this.next() : this.prev();
+                }, { passive: true });
+            }
+
+            next() { this.showSlide(this.currentSlide + 1); }
+            prev() { this.showSlide(this.currentSlide - 1); }
+
+            showSlide(index) {
+                this.currentSlide = Math.max(0, Math.min(index, this.total - 1));
+                this.slides.forEach((slide, i) => {
+                    const isActive = i === this.currentSlide;
+                    slide.classList.toggle('active', isActive);
+                    slide.classList.toggle('visible', isActive);
+                });
+                this.nav.textContent = `${this.currentSlide + 1} / ${this.total}`;
+            }
+        }
+
+        /* ===========================================
+           INLINE EDITOR
+           =========================================== */
+        class InlineEditor {
+            constructor() {
+                this.isActive = false;
+                this.toggle = document.getElementById('editToggle');
+                this.hotzone = document.getElementById('editHotzone');
+                this.setup();
+            }
+
+            setup() {
+                let hideTimeout = null;
+                this.hotzone.addEventListener('mouseenter', () => {
+                    clearTimeout(hideTimeout);
+                    this.toggle.classList.add('show');
+                });
+                this.hotzone.addEventListener('mouseleave', () => {
+                    hideTimeout = setTimeout(() => {
+                        if (!this.isActive) this.toggle.classList.remove('show');
+                    }, 400);
+                });
+                this.toggle.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+                this.toggle.addEventListener('mouseleave', () => {
+                    hideTimeout = setTimeout(() => {
+                        if (!this.isActive) this.toggle.classList.remove('show');
+                    }, 400);
+                });
+                this.toggle.addEventListener('click', () => this.toggleEditMode());
+                this.hotzone.addEventListener('click', () => this.toggleEditMode());
+                document.addEventListener('keydown', (e) => {
+                    if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) {
+                        this.toggleEditMode();
+                    }
+                    if (e.ctrlKey && e.key === 's' && this.isActive) {
+                        e.preventDefault();
+                        this.save();
+                    }
+                });
+            }
+
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                this.toggle.classList.toggle('active', this.isActive);
+                document.querySelectorAll('.slide-title, .slide-subtitle, .section-tag, h1, h3, h4, p, li, .subtitle-text, .tag-line, .screenshot-desc, .definition-block p').forEach(el => {
+                    el.contentEditable = this.isActive;
+                    el.style.outline = this.isActive ? '2px dashed rgba(238,0,0,0.3)' : 'none';
+                    el.style.cursor = this.isActive ? 'text' : '';
+                });
+            }
+
+            save() {
+                const html = document.documentElement.outerHTML;
+                const blob = new Blob([`<!DOCTYPE html>\n${html}`], { type: 'text/html' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'red-hat-maas.html';
+                a.click();
+                URL.revokeObjectURL(a.href);
+            }
+        }
+
+        const presentation = new SlidePresentation();
+        const editor = new InlineEditor();
+    </script>
+</body>
+</html>
