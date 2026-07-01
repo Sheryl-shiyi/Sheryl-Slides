@@ -1,0 +1,1657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All You Need to Know About AI Inference</title>
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+/* === CSS CUSTOM PROPERTIES === */
+:root {
+    --stage-bg: #020810;
+    --slide-bg: #050a15;
+    --teal: #5EA4FF;
+    --teal-dim: rgba(94, 164, 255, 0.15);
+    --teal-border: rgba(94, 164, 255, 0.12);
+    --amber: #f0a030;
+    --amber-dim: rgba(240, 160, 48, 0.12);
+    --red: #ff4466;
+    --text-primary: #d8e4f0;
+    --text-muted: #4a5a78;
+    --text-bright: #f0f4f8;
+    --card-bg: rgba(94, 164, 255, 0.03);
+    --card-border: rgba(94, 164, 255, 0.1);
+    --font-display: 'Oxanium', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================
+   FIXED 16:9 STAGE: MANDATORY BASE STYLES
+   =========================================== */
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--stage-bg); }
+.deck-viewport { position: fixed; inset: 0; overflow: hidden; background: var(--stage-bg); }
+.deck-stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; transform-origin: 0 0; background: var(--slide-bg); }
+.slide { position: absolute; inset: 0; width: 1920px; height: 1080px; overflow: hidden; display: block; visibility: hidden; opacity: 0; pointer-events: none; background: var(--slide-bg); }
+.slide.active, .slide.visible { visibility: visible; opacity: 1; pointer-events: auto; z-index: 1; }
+img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+.deck-controls { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 1000; }
+@media print {
+    html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+    .deck-viewport { position: static; overflow: visible; background: #fff; }
+    .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+    .slide { position: relative; display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important; width: 1920px; height: 1080px; break-after: page; page-break-after: always; }
+    .slide:last-child { break-after: auto; page-break-after: auto; }
+    .deck-controls { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+}
+
+/* === DOT GRID BACKGROUND === */
+.slide::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(94,164,255,0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* === SLIDE CHROME === */
+.slide-chrome {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+}
+.accent-bar {
+    position: absolute;
+    left: 32px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--teal) 0%, transparent 40%, transparent 60%, var(--amber) 100%);
+    opacity: 0.7;
+}
+.slide-header {
+    position: absolute;
+    top: 36px;
+    left: 64px;
+    right: 64px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.slide-header .section-label {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.slide-header .section-label .hl { color: var(--teal); }
+.slide-header .page-num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+}
+
+/* === REVEAL ANIMATIONS === */
+.reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo);
+}
+.reveal-left {
+    opacity: 0;
+    transform: translateX(-30px);
+    transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo);
+}
+.reveal-right {
+    opacity: 0;
+    transform: translateX(30px);
+    transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo);
+}
+.reveal-scale {
+    opacity: 0;
+    transform: scale(0.92);
+    transition: opacity 0.6s var(--ease-out-expo), transform 0.6s var(--ease-out-expo);
+}
+.slide.visible .reveal,
+.slide.visible .reveal-left,
+.slide.visible .reveal-right,
+.slide.visible .reveal-scale {
+    opacity: 1;
+    transform: none;
+}
+.d1 { transition-delay: 0.1s !important; }
+.d2 { transition-delay: 0.2s !important; }
+.d3 { transition-delay: 0.3s !important; }
+.d4 { transition-delay: 0.4s !important; }
+.d5 { transition-delay: 0.5s !important; }
+.d6 { transition-delay: 0.6s !important; }
+.d7 { transition-delay: 0.7s !important; }
+.d8 { transition-delay: 0.8s !important; }
+.d9 { transition-delay: 0.9s !important; }
+.d10 { transition-delay: 1.0s !important; }
+
+/* === CONTENT CONTAINERS === */
+.slide-body {
+    position: relative;
+    z-index: 2;
+    padding: 100px 80px 60px 80px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+.slide-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 52px;
+    color: var(--text-bright);
+    line-height: 1.15;
+    margin-bottom: 40px;
+}
+.slide-title .hl { color: var(--teal); }
+.slide-title .hl-amber { color: var(--amber); }
+.slide-subtitle {
+    font-family: var(--font-mono);
+    font-size: 15px;
+    color: var(--teal);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+}
+
+/* === CARDS === */
+.card-grid {
+    display: grid;
+    gap: 20px;
+    flex: 1;
+}
+.card-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+.card-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.card-grid.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.card-grid.cols-5 { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; }
+
+.card {
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 34px;
+    background: var(--card-bg);
+    display: flex;
+    flex-direction: column;
+}
+.card.highlight { border-color: rgba(94,164,255,0.3); background: rgba(94,164,255,0.06); }
+.card.amber-hl { border-color: rgba(240,160,48,0.3); background: rgba(240,160,48,0.06); }
+
+.card-label {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+.card-value {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 38px;
+    color: var(--teal);
+    line-height: 1.1;
+}
+.card-value.amber { color: var(--amber); }
+.card-value.white { color: var(--text-bright); }
+.card-value.small { font-size: 28px; }
+
+.card-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 26px;
+    color: var(--text-bright);
+    margin-bottom: 12px;
+    line-height: 1.2;
+}
+.card-text {
+    font-family: var(--font-mono);
+    font-size: 17px;
+    color: var(--text-muted);
+    line-height: 1.65;
+    flex: 1;
+}
+.card-text .bright { color: var(--text-primary); }
+.card-text .hl { color: var(--teal); }
+.card-text .hl-amber { color: var(--amber); }
+
+.card-footer {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--card-border);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    color: var(--text-muted);
+}
+
+/* Progress bars */
+.bar-track {
+    height: 5px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 3px;
+    margin-top: 10px;
+    overflow: hidden;
+}
+.bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    width: 0;
+    transition: width 1.2s var(--ease-out-expo);
+}
+.bar-fill.teal { background: var(--teal); }
+.bar-fill.amber { background: var(--amber); }
+.slide.visible .bar-fill { width: var(--bar-w); }
+
+/* === BULLET LIST === */
+.bullet-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+.bullet-list li {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    padding-left: 32px;
+    position: relative;
+}
+.bullet-list li::before {
+    content: '>';
+    position: absolute;
+    left: 0;
+    color: var(--teal);
+    font-weight: 700;
+}
+.bullet-list li .muted { color: var(--text-muted); }
+
+/* === TWO COLUMN === */
+.two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 50px;
+    flex: 1;
+}
+.col-header {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 30px;
+    color: var(--text-bright);
+    margin-bottom: 24px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--teal-border);
+}
+.col-header.amber-border { border-bottom-color: rgba(240,160,48,0.25); }
+
+/* === TABLE === */
+.data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-family: var(--font-mono);
+    font-size: 14px;
+}
+.data-table th {
+    font-size: 14px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--teal);
+    text-align: left;
+    padding: 16px 20px;
+    border-bottom: 2px solid var(--teal-border);
+    font-weight: 500;
+}
+.data-table td {
+    padding: 16px 20px;
+    color: var(--text-primary);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    vertical-align: top;
+    line-height: 1.55;
+    font-size: 16px;
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table .muted { color: var(--text-muted); }
+.data-table .hl { color: var(--teal); font-weight: 500; }
+.data-table .hl-amber { color: var(--amber); font-weight: 500; }
+
+/* === BADGE / TAG === */
+.badge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--teal-border);
+    color: var(--teal);
+    margin-right: 8px;
+    margin-bottom: 8px;
+}
+.badge.amber { border-color: rgba(240,160,48,0.3); color: var(--amber); }
+.badge.filled { background: var(--teal); color: var(--slide-bg); border-color: var(--teal); font-weight: 500; }
+
+/* === SECTION DIVIDER === */
+.section-slide {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    position: relative;
+    z-index: 2;
+}
+.section-inner {
+    text-align: center;
+}
+.section-number {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 180px;
+    color: var(--teal);
+    opacity: 0.15;
+    line-height: 1;
+    margin-bottom: -30px;
+}
+.section-name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 64px;
+    color: var(--text-bright);
+    line-height: 1.2;
+}
+.section-desc {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    color: var(--text-muted);
+    margin-top: 16px;
+}
+
+/* === TIMELINE === */
+.timeline-track {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 30px;
+    flex: 1;
+    align-items: flex-start;
+    margin-top: 30px;
+}
+.timeline-track::before {
+    content: '';
+    position: absolute;
+    top: 24px;
+    left: 30px;
+    right: 30px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--teal), var(--amber));
+    opacity: 0.4;
+}
+.timeline-item {
+    position: relative;
+    width: 200px;
+    text-align: center;
+}
+.timeline-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--teal);
+    margin: 18px auto 20px;
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 0 12px rgba(94,164,255,0.4);
+}
+.timeline-dot.amber { background: var(--amber); box-shadow: 0 0 12px rgba(240,160,48,0.4); }
+.timeline-year {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 28px;
+    color: var(--teal);
+}
+.timeline-year.amber { color: var(--amber); }
+.timeline-text {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    color: var(--text-muted);
+    line-height: 1.55;
+    margin-top: 8px;
+}
+
+/* === FLOW DIAGRAM === */
+.flow-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+.flow-box {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    padding: 14px 26px;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+.flow-box.hl { border-color: rgba(94,164,255,0.3); background: rgba(94,164,255,0.08); color: var(--teal); }
+.flow-arrow {
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    font-size: 18px;
+}
+
+/* === TITLE SLIDE SPECIFIC === */
+.title-layout {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 64px 1fr 480px 64px;
+    grid-template-rows: 64px 1fr auto 64px;
+}
+.title-accent-bar {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    width: 3px;
+    margin-left: 30px;
+    background: linear-gradient(180deg, var(--teal) 0%, transparent 40%, transparent 60%, var(--amber) 100%);
+    opacity: 0.7;
+}
+.title-meta-top {
+    grid-column: 2 / 4;
+    grid-row: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+}
+.title-content {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 20px;
+    gap: 32px;
+}
+.title-tag {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--teal);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+}
+.title-tag::before { content: '>'; margin-right: 12px; opacity: 0.5; }
+.title-main {
+    font-family: var(--font-display);
+    font-size: 80px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--text-primary);
+}
+.title-main .gradient {
+    background: linear-gradient(135deg, var(--teal), var(--amber));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.title-sub {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    max-width: 660px;
+}
+.title-data-panel {
+    grid-column: 3;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 18px;
+    padding: 40px 20px;
+}
+.title-meta-bottom {
+    grid-column: 2 / 4;
+    grid-row: 3;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-top: 1px solid var(--card-border);
+}
+.pill-group { display: flex; gap: 10px; }
+.pill {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    color: var(--text-muted);
+}
+.pill.active { border-color: var(--teal); color: var(--teal); }
+.meta-label {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.meta-label .hl { color: var(--teal); }
+
+/* === SCAN LINE === */
+.scan-line {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--teal), transparent);
+    opacity: 0.15;
+    z-index: 3;
+    animation: scanDown 8s linear infinite;
+    pointer-events: none;
+}
+@keyframes scanDown { 0% { top: -2px; } 100% { top: 1080px; } }
+
+/* === EDIT MODE === */
+.edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+.edit-toggle {
+    position: fixed; top: 18px; left: 18px;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--card-border);
+    background: rgba(5,10,21,0.9);
+    color: var(--text-muted);
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 10001;
+}
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+.edit-toggle.active { border-color: var(--teal); color: var(--teal); }
+.editing-active [contenteditable="true"] { outline: 1px dashed rgba(94,164,255,0.3); cursor: text; border-radius: 4px; }
+.save-toast {
+    position: fixed; bottom: 30px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    font-family: var(--font-mono); font-size: 13px;
+    color: var(--teal); background: rgba(5,10,21,0.95);
+    border: 1px solid var(--teal-border);
+    padding: 10px 24px; border-radius: 8px;
+    opacity: 0; transition: all 0.3s ease; z-index: 10002;
+    pointer-events: none;
+}
+.save-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+<!-- ============ SLIDE 1: TITLE ============ -->
+<section class="slide active" data-slide="1">
+    <div class="scan-line"></div>
+    <div class="title-layout">
+        <div class="title-accent-bar reveal d1"></div>
+        <div class="title-meta-top reveal d2">
+            <span class="meta-label"><span class="hl">></span> internal_presentation</span>
+            <span class="meta-label">2026.07</span>
+        </div>
+        <div class="title-content">
+            <div class="title-tag reveal d3">Deep Dive</div>
+            <div class="title-main reveal d4">All You Need<br>to Know About<br><span class="gradient">AI Inference</span></div>
+            <div class="title-sub reveal d5">Engines, hardware, optimization — from predictive models to LLM serving at scale</div>
+        </div>
+        <div class="title-data-panel">
+            <div class="card reveal d5" style="padding:20px;">
+                <div class="card-label">Inference Share of AI Compute</div>
+                <div class="card-value">67%</div>
+                <div class="bar-track"><div class="bar-fill teal" style="--bar-w:67%;"></div></div>
+            </div>
+            <div class="card reveal d6" style="padding:20px;">
+                <div class="card-label">GPU Market (NVIDIA)</div>
+                <div class="card-value amber">80%</div>
+                <div class="bar-track"><div class="bar-fill amber" style="--bar-w:80%;"></div></div>
+            </div>
+            <div class="card reveal d7" style="padding:20px;">
+                <div class="card-label">Peak Throughput (Cerebras)</div>
+                <div class="card-value">3,000</div>
+                <div class="card-text">tokens/sec — gpt-oss-120B</div>
+            </div>
+        </div>
+        <div class="title-meta-bottom reveal d8">
+            <div class="pill-group">
+                <span class="pill active">LLM Engines</span>
+                <span class="pill">Hardware</span>
+                <span class="pill">Optimization</span>
+                <span class="pill">Trends</span>
+            </div>
+            <span class="meta-label">01 / 18</span>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 2: AGENDA ============ -->
+<section class="slide" data-slide="2">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">></span> overview</span><span class="page-num">02 / 18</span></div>
+    </div>
+    <div class="slide-body">
+        <div class="slide-subtitle reveal d1">Agenda</div>
+        <div class="slide-title reveal d2">Four Sections, <span class="hl">One Story</span></div>
+        <div class="card-grid cols-4" style="margin-top:10px;">
+            <div class="card highlight reveal d3">
+                <div class="card-value" style="font-size:48px; margin-bottom:14px;">01</div>
+                <div class="card-title">Foundation</div>
+                <div class="card-text">Predictive vs Generative AI inference. Why LLM serving is a fundamentally different problem.</div>
+                <div class="card-footer">Slides 3–4</div>
+            </div>
+            <div class="card reveal d4">
+                <div class="card-value amber" style="font-size:48px; margin-bottom:14px;">02</div>
+                <div class="card-title">Engine Landscape</div>
+                <div class="card-text">Major inference engines, hardware accelerators, and commercial platforms compared.</div>
+                <div class="card-footer">Slides 5–8</div>
+            </div>
+            <div class="card reveal d5">
+                <div class="card-value" style="font-size:48px; margin-bottom:14px;">03</div>
+                <div class="card-title">Optimization</div>
+                <div class="card-text">Quantization, KV cache, speculative decoding, disaggregated serving, and cost strategies.</div>
+                <div class="card-footer">Slides 9–13</div>
+            </div>
+            <div class="card reveal d6">
+                <div class="card-value amber" style="font-size:48px; margin-bottom:14px;">04</div>
+                <div class="card-title">Trends & Future</div>
+                <div class="card-text">Multimodal, edge inference, API standards, and what to watch in 2027.</div>
+                <div class="card-footer">Slides 14–18</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 3: TWO WORLDS ============ -->
+<section class="slide" data-slide="3">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">01</span> foundation</span><span class="page-num">03 / 18</span></div>
+    </div>
+    <div class="slide-body">
+        <div class="slide-subtitle reveal d1">Predictive vs Generative</div>
+        <div class="slide-title reveal d2">Two Worlds of <span class="hl">AI Inference</span></div>
+        <div class="two-col" style="margin-top:10px;">
+            <div class="reveal-left d3">
+                <div class="col-header">Predictive AI</div>
+                <ul class="bullet-list">
+                    <li>Classification, regression, object detection</li>
+                    <li>Single forward pass — <span class="muted">low latency (&lt;10ms typical)</span></li>
+                    <li>Compute-bound, CPU-friendly, batch-optimized</li>
+                    <li>Mature tooling — <span class="muted">ONNX Runtime, TensorFlow Serving, Triton</span></li>
+                </ul>
+                <div style="margin-top: 20px; display: flex; gap: 8px; flex-wrap: wrap;">
+                    <span class="badge">Fraud Detection</span>
+                    <span class="badge">Recommendation</span>
+                    <span class="badge">Anomaly Detection</span>
+                </div>
+            </div>
+            <div class="reveal-right d4">
+                <div class="col-header amber-border" style="color: var(--amber);">Generative AI (LLM)</div>
+                <ul class="bullet-list">
+                    <li>Text, image, code, audio generation</li>
+                    <li>Autoregressive — <span class="muted">token-by-token, high latency</span></li>
+                    <li>Memory-bound, GPU-intensive, KV cache hungry</li>
+                    <li>Rapidly evolving — <span class="muted">vLLM, TensorRT-LLM, SGLang</span></li>
+                </ul>
+                <div style="margin-top: 20px; display: flex; gap: 8px; flex-wrap: wrap;">
+                    <span class="badge amber">ChatGPT</span>
+                    <span class="badge amber">Copilot</span>
+                    <span class="badge amber">Midjourney</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 4: WHY IT'S HARD ============ -->
+<section class="slide" data-slide="4">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">01</span> foundation</span><span class="page-num">04 / 18</span></div>
+    </div>
+    <div class="slide-body">
+        <div class="slide-subtitle reveal d1">The Core Challenge</div>
+        <div class="slide-title reveal d2">Why <span class="hl">LLM Inference</span> Is Hard</div>
+        <div class="card-grid cols-2" style="margin-top:10px;">
+            <div class="card highlight reveal d3">
+                <div class="card-title">Autoregressive Bottleneck</div>
+                <div class="card-text">Each token depends on all previous tokens. You can't parallelize output generation — it's inherently sequential.<br><br><span class="hl">1 token = 1 full model forward pass</span></div>
+            </div>
+            <div class="card reveal d4">
+                <div class="card-title">Memory-Bound Decode</div>
+                <div class="card-text">Decode phase reads the entire model weights per token, but does minimal compute. Bottleneck is <span class="hl">memory bandwidth</span>, not FLOPS.<br><br><span class="hl-amber">GPU utilization often &lt; 5% during decode</span></div>
+            </div>
+            <div class="card reveal d5">
+                <div class="card-title">KV Cache Growth</div>
+                <div class="card-text">Attention key-value pairs cached for every token in the sequence. A 4K prompt on a 70B model needs <span class="hl">~1.34 GB</span> of KV cache.<br><br><span class="muted">Scales linearly with sequence length × batch size</span></div>
+            </div>
+            <div class="card amber-hl reveal d6">
+                <div class="card-title">Prefill ≠ Decode</div>
+                <div class="card-text">Prefill is <span class="hl">compute-bound</span> (process all input tokens at once). Decode is <span class="hl-amber">memory-bound</span> (generate one token at a time).<br><br><span class="hl-amber">Different bottlenecks → need different optimization</span></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 5: ENGINE MAP ============ -->
+<section class="slide" data-slide="5">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">02</span> engine landscape</span><span class="page-num">05 / 18</span></div>
+    </div>
+    <div class="slide-body">
+        <div class="slide-subtitle reveal d1">Ecosystem Overview</div>
+        <div class="slide-title reveal d2">LLM Inference <span class="hl">Engine Map</span></div>
+        <div class="card-grid cols-3" style="margin-top:10px;">
+            <div class="reveal d3">
+                <div class="col-header" style="font-size:20px;">Production Serving</div>
+                <div class="card highlight" style="margin-bottom:14px;">
+                    <div class="card-title" style="color:var(--teal);">vLLM</div>
+                    <div class="card-text">Production default in 2026. PagedAttention, widest model support, no compilation needed. FP8 KV cache standard.</div>
+                </div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-title">TensorRT-LLM</div>
+                    <div class="card-text">NVIDIA-optimized. 15-30% higher throughput on H100s but requires 25-40 min compilation.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">SGLang</div>
+                    <div class="card-text">RadixAttention excels with shared prefixes. 29% throughput edge on smaller models.</div>
+                </div>
+            </div>
+            <div class="reveal d4">
+                <div class="col-header amber-border" style="font-size:20px; color:var(--amber);">Edge & Local</div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-title">llama.cpp</div>
+                    <div class="card-text">De facto CPU/edge standard. GGUF format is the lingua franca for quantized models.</div>
+                </div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-title">Ollama</div>
+                    <div class="card-text">165K GitHub stars. Go wrapper around llama.cpp — great for prototyping, not production.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">MLC-LLM</div>
+                    <div class="card-text">Best for Apple Silicon batching. Paged KV caching for long contexts on device.</div>
+                </div>
+            </div>
+            <div class="reveal d5">
+                <div class="col-header" style="font-size:20px;">Cloud-Native & Framework</div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-title">TGI (HuggingFace)</div>
+                    <div class="card-text">Tight HF model hub integration. Flash Attention, tensor parallelism, quantization built in.</div>
+                </div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-title">Triton Inference Server</div>
+                    <div class="card-text">NVIDIA's multi-framework server. Supports ONNX, TensorRT, PyTorch, and more.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title" style="color:var(--teal);">llm-d</div>
+                    <div class="card-text">CNCF Sandbox — Kubernetes-native disaggregated serving. Backed by Red Hat, NVIDIA, AMD, IBM.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 6: ENGINE COMPARISON ============ -->
+<section class="slide" data-slide="6">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">02</span> engine landscape</span><span class="page-num">06 / 18</span></div>
+    </div>
+    <div class="slide-body">
+        <div class="slide-subtitle reveal d1">Head-to-Head</div>
+        <div class="slide-title reveal d2">Engine <span class="hl">Comparison</span></div>
+        <div class="reveal d3" style="flex:1; overflow:hidden; margin-top:10px;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width:16%;">Engine</th>
+                        <th style="width:18%;">Throughput</th>
+                        <th style="width:16%;">Hardware</th>
+                        <th style="width:14%;">Compilation</th>
+                        <th style="width:18%;">Key Strength</th>
+                        <th style="width:18%;">Best For</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="hl">vLLM</td>
+                        <td>12,500 tok/s</td>
+                        <td>NVIDIA, AMD, CPU</td>
+                        <td>None</td>
+                        <td>Widest model support</td>
+                        <td>General production</td>
+                    </tr>
+                    <tr>
+                        <td class="hl-amber">TensorRT-LLM</td>
+                        <td>15,000+ tok/s</td>
+                        <td>NVIDIA only</td>
+                        <td class="hl-amber">25-40 min</td>
+                        <td>Maximum throughput</td>
+                        <td>High-volume NVIDIA</td>
+                    </tr>
+                    <tr>
+                        <td class="hl">SGLang</td>
+                        <td>16,200 tok/s</td>
+                        <td>NVIDIA, AMD</td>
+                        <td>None</td>
+                        <td>RadixAttention</td>
+                        <td>Prefix-heavy workloads</td>
+                    </tr>
+                    <tr>
+                        <td>TGI</td>
+                        <td>Moderate</td>
+                        <td>NVIDIA, AMD, Intel</td>
+                        <td>None</td>
+                        <td>HF ecosystem</td>
+                        <td>HuggingFace users</td>
+                    </tr>
+                    <tr>
+                        <td>llama.cpp</td>
+                        <td>Varies (CPU)</td>
+                        <td>Any (CPU, Metal, CUDA)</td>
+                        <td>None</td>
+                        <td>Universal edge runtime</td>
+                        <td>Edge / local / CPU</td>
+                    </tr>
+                    <tr>
+                        <td>llm-d</td>
+                        <td>4,500-11K tok/s</td>
+                        <td>NVIDIA, AMD</td>
+                        <td>None</td>
+                        <td>K8s disaggregation</td>
+                        <td>Cloud-native at scale</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="reveal d4" style="margin-top:16px; display:flex; gap:12px;">
+            <span class="badge filled">vLLM = safe default</span>
+            <span class="badge">SGLang = shared prefixes</span>
+            <span class="badge amber">TensorRT-LLM = max perf on NVIDIA</span>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 7: HARDWARE ============ -->
+<section class="slide" data-slide="7">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">02</span> engine landscape</span><span class="page-num">07 / 18</span></div>
+    </div>
+    <div class="slide-body">
+        <div class="slide-subtitle reveal d1">Accelerators</div>
+        <div class="slide-title reveal d2">Hardware <span class="hl">Landscape</span> <span class="hl-amber">2026</span></div>
+        <div class="card-grid cols-4" style="margin-top:10px;">
+            <div class="card highlight reveal d3">
+                <div class="card-label">NVIDIA</div>
+                <div class="card-title" style="color:var(--teal);">Blackwell B200</div>
+                <div class="card-text">
+                    <span class="hl">20 PFLOPS</span> FP4<br>
+                    192 GB HBM3e<br>
+                    8 TB/s bandwidth<br>
+                    15x H100 inference (FP4)<br><br>
+                    <span class="muted">$7.50-$9/GPU-hr (cloud)</span>
+                </div>
+                <div class="bar-track"><div class="bar-fill teal" style="--bar-w:95%;"></div></div>
+                <div class="card-footer">80% market share</div>
+            </div>
+            <div class="card amber-hl reveal d4">
+                <div class="card-label">AMD</div>
+                <div class="card-title" style="color:var(--amber);">MI350X</div>
+                <div class="card-text">
+                    <span class="hl-amber">288 GB</span> HBM3E<br>
+                    2.6x H100 on Llama 405B<br>
+                    More VRAM than B200<br>
+                    ~45% MFU vs NVIDIA's 55%<br><br>
+                    <span class="muted">5-7% market share</span>
+                </div>
+                <div class="bar-track"><div class="bar-fill amber" style="--bar-w:60%;"></div></div>
+                <div class="card-footer">Memory capacity leader</div>
+            </div>
+            <div class="card reveal d5">
+                <div class="card-label">Google</div>
+                <div class="card-title">TPU v6e (Trillium)</div>
+                <div class="card-text">
+                    <span class="bright">918 TFLOPS</span> BF16/chip<br>
+                    1.836 PFLOPS INT8<br>
+                    67% better perf/watt<br>
+                    Inference-optimized<br><br>
+                    <span class="muted">GCP exclusive</span>
+                </div>
+                <div class="bar-track"><div class="bar-fill teal" style="--bar-w:45%;"></div></div>
+                <div class="card-footer">Efficiency leader</div>
+            </div>
+            <div class="card reveal d6">
+                <div class="card-label">Custom Silicon</div>
+                <div class="card-title">ASIC Challengers</div>
+                <div class="card-text">
+                    <span class="hl">Cerebras</span> WSE-3<br>
+                    <span class="hl-amber">Groq</span> LPU<br>
+                    <span class="bright">SambaNova</span> SN50<br>
+                    AWS Trainium2<br><br>
+                    <span class="muted">Highest tok/s, niche ecosystem</span>
+                </div>
+                <div class="bar-track"><div class="bar-fill teal" style="--bar-w:30%;"></div></div>
+                <div class="card-footer">Throughput champions</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 8: COMMERCIAL PLATFORMS ============ -->
+<section class="slide" data-slide="8">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">02</span> engine landscape</span><span class="page-num">08 / 18</span></div>
+    </div>
+    <div class="slide-body">
+        <div class="slide-subtitle reveal d1">Inference-as-a-Service</div>
+        <div class="slide-title reveal d2">Commercial <span class="hl">Inference Platforms</span></div>
+        <div class="two-col" style="margin-top:10px;">
+            <div class="reveal d3">
+                <div class="col-header">Throughput Leaders</div>
+                <div class="card highlight" style="margin-bottom:14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                        <div class="card-title" style="color:var(--teal);">Cerebras</div>
+                        <div class="card-value" style="font-size:32px;">3,000 <span style="font-size:14px; color:var(--text-muted);">tok/s</span></div>
+                    </div>
+                    <div class="card-text">gpt-oss-120B. IPO 2026: $66B day-one cap. Groq LPU tech licensed to NVIDIA for ~$20B.</div>
+                </div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                        <div class="card-title">Groq</div>
+                        <div class="card-value amber" style="font-size:32px;">476 <span style="font-size:14px; color:var(--text-muted);">tok/s</span></div>
+                    </div>
+                    <div class="card-text">gpt-oss-120B. LPU architecture — 10x H100 cluster on Llama 2 70B.</div>
+                </div>
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                        <div class="card-title">SambaNova</div>
+                        <div class="card-value" style="font-size:32px;">198 <span style="font-size:14px; color:var(--text-muted);">tok/s</span></div>
+                    </div>
+                    <div class="card-text">DeepSeek-R1 671B on 16 chips. SN50 chip (Feb 2026): 5x faster, 3x lower TCO.</div>
+                </div>
+            </div>
+            <div class="reveal d4">
+                <div class="col-header amber-border" style="color:var(--amber);">Scale Leaders</div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                        <div class="card-title">Together AI</div>
+                        <div class="card-value amber" style="font-size:26px;">~$1B ARR</div>
+                    </div>
+                    <div class="card-text">100+ models. Talks at $7.5B valuation. Full model catalog with fine-tuning.</div>
+                </div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                        <div class="card-title">Fireworks AI</div>
+                        <div class="card-value amber" style="font-size:26px;">~$800M ARR</div>
+                    </div>
+                    <div class="card-text">30T+ tokens/day. Talks at $15B valuation. Optimized custom serving stack.</div>
+                </div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                        <div class="card-title">New Entrants</div>
+                        <div class="card-value" style="font-size:20px; color:var(--text-muted);">Fast-growing</div>
+                    </div>
+                    <div class="card-text"><span class="hl">Baseten</span> ~$600M ARR · <span class="hl-amber">Modal</span> ~$300M ARR<br><span class="bright">OpenRouter</span> 25T tok/week · <span class="bright">Fal</span> $4.5B valuation</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 9: OPTIMIZATION TAXONOMY ============ -->
+<section class="slide" data-slide="9">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">03</span> optimization</span><span class="page-num">09 / 18</span></div>
+    </div>
+    <div class="slide-body">
+        <div class="slide-subtitle reveal d1">The Toolbox</div>
+        <div class="slide-title reveal d2">Optimization <span class="hl">Taxonomy</span></div>
+        <div class="card-grid cols-5" style="margin-top:10px;">
+            <div class="card highlight reveal d3">
+                <div class="card-value" style="font-size:32px; margin-bottom:12px;">Q</div>
+                <div class="card-title">Quantization</div>
+                <div class="card-text">Reduce precision — FP8, INT4, AWQ, GPTQ. Less VRAM, faster math, minimal quality loss.</div>
+                <div class="card-footer"><span class="hl">2-4x memory savings</span></div>
+            </div>
+            <div class="card reveal d4">
+                <div class="card-value amber" style="font-size:32px; margin-bottom:12px;">KV</div>
+                <div class="card-title">KV Cache</div>
+                <div class="card-text">PagedAttention, FP8 KV, prefix caching. Manage the growing memory footprint of attention.</div>
+                <div class="card-footer"><span class="hl-amber">54% decode cost cut</span></div>
+            </div>
+            <div class="card reveal d5">
+                <div class="card-value" style="font-size:32px; margin-bottom:12px;">B</div>
+                <div class="card-title">Batching</div>
+                <div class="card-text">Continuous batching, dynamic batch sizing. Maximize GPU utilization across requests.</div>
+                <div class="card-footer"><span class="hl">2-3x throughput</span></div>
+            </div>
+            <div class="card reveal d6">
+                <div class="card-value amber" style="font-size:32px; margin-bottom:12px;">S</div>
+                <div class="card-title">Speculative</div>
+                <div class="card-text">Draft model generates candidates. Target verifies in parallel. Same output, fewer passes.</div>
+                <div class="card-footer"><span class="hl-amber">3x average speedup</span></div>
+            </div>
+            <div class="card highlight reveal d7">
+                <div class="card-value" style="font-size:32px; margin-bottom:12px;">D</div>
+                <div class="card-title">Disaggregated</div>
+                <div class="card-text">Separate prefill and decode onto different hardware. Match each phase to its bottleneck.</div>
+                <div class="card-footer"><span class="hl">109% throughput gain</span></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 10: QUANTIZATION ============ -->
+<section class="slide" data-slide="10">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">03</span> optimization</span><span class="page-num">10 / 18</span></div>
+    </div>
+    <div class="slide-body">
+        <div class="slide-subtitle reveal d1">Precision & Memory</div>
+        <div class="slide-title reveal d2"><span class="hl">Quantization</span> & KV Cache</div>
+        <div class="two-col" style="margin-top:10px;">
+            <div class="reveal d3">
+                <div class="col-header">Weight Quantization</div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-title">FP8 — The New Default</div>
+                    <div class="card-text">Production standard in vLLM since early 2026. FP8 KV cache reduces decode cost to <span class="hl">54% of BF16</span>. Fixed earlier FA3 accuracy issues.</div>
+                </div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-title">AWQ & GPTQ</div>
+                    <div class="card-text">Recommended INT4 methods. AMD Quark supports both + Rotation + SmoothQuant. Best when VRAM is tight.</div>
+                </div>
+                <div class="card highlight">
+                    <div class="card-label">Production Rule</div>
+                    <div class="card-text" style="font-size:16px;">
+                        <span class="hl">Blackwell / Hopper</span> → FP8<br>
+                        <span class="hl-amber">VRAM constrained</span> → AWQ INT4<br>
+                        <span class="bright">Edge / mobile</span> → GGUF 4-bit
+                    </div>
+                </div>
+            </div>
+            <div class="reveal d4">
+                <div class="col-header amber-border" style="color:var(--amber);">KV Cache Optimization</div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-title">PagedAttention (vLLM)</div>
+                    <div class="card-text">Virtual memory for KV cache. Eliminates fragmentation, enables dynamic allocation. <span class="hl">Near-zero waste</span> on cache memory.</div>
+                </div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-title">Prefix Caching (SGLang)</div>
+                    <div class="card-text">RadixAttention reuses KV cache across requests sharing the same prefix. <span class="hl-amber">Massive wins for system prompts, RAG, multi-turn.</span></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">The Scale Challenge</div>
+                    <div class="card-text">4K prompt on 70B model = <span class="hl">~1.34 GB KV cache</span>. For 128K context, this grows to ~43 GB. Compression and offloading are active research areas.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 11: SPECULATIVE DECODING ============ -->
+<section class="slide" data-slide="11">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">03</span> optimization</span><span class="page-num">11 / 18</span></div>
+    </div>
+    <div class="slide-body">
+        <div class="slide-subtitle reveal d1">Faster Without Sacrifice</div>
+        <div class="slide-title reveal d2"><span class="hl">Speculative</span> Decoding</div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:40px; flex:1; margin-top:10px;">
+            <div class="reveal d3">
+                <div class="col-header">How It Works</div>
+                <div class="flow-row" style="margin-top:16px;">
+                    <div class="flow-box">Draft model</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-box hl">Generate K candidates</div>
+                </div>
+                <div class="flow-row">
+                    <div class="flow-box">Target model</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-box hl">Verify all K in parallel</div>
+                </div>
+                <div class="flow-row">
+                    <div class="flow-box">Accept</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-box hl">First N correct tokens</div>
+                </div>
+                <div style="margin-top:24px;">
+                    <ul class="bullet-list">
+                        <li>Output is <span class="muted">mathematically identical</span> to standard decoding</li>
+                        <li>Speedup depends on <span class="muted">acceptance rate</span> — how well the draft model predicts the target</li>
+                        <li>Best gains on <span class="muted">structured / predictable text</span> (code, math, templates)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="reveal d4">
+                <div class="col-header amber-border" style="color:var(--amber);">Results (2025-2026)</div>
+                <div class="card highlight" style="margin-bottom:16px;">
+                    <div class="card-label">DFlash on TPU v5p</div>
+                    <div class="card-value" style="font-size:48px;">3.13x</div>
+                    <div class="card-text" style="margin-top:8px;">Average speedup. <span class="hl">6x on math/coding tasks</span>. 2.29x end-to-end serving improvement.</div>
+                </div>
+                <div class="card" style="margin-bottom:16px;">
+                    <div class="card-label">Production Adoption</div>
+                    <div class="card-text" style="font-size:16px;">
+                        <span class="hl">vLLM</span> — Built-in speculative decoding support<br>
+                        <span class="hl">SGLang</span> — Native speculative with RadixAttention<br>
+                        <span class="hl-amber">TensorRT-LLM</span> — Medusa and Eagle variants
+                    </div>
+                </div>
+                <div class="card amber-hl">
+                    <div class="card-label">When to use</div>
+                    <div class="card-text" style="font-size:15px;">Latency-sensitive apps where you can tolerate a small draft model. <span class="hl-amber">Not free — draft model uses GPU memory.</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 12: DISAGGREGATED ============ -->
+<section class="slide" data-slide="12">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">03</span> optimization</span><span class="page-num">12 / 18</span></div>
+    </div>
+    <div class="slide-body">
+        <div class="slide-subtitle reveal d1">Architecture Shift</div>
+        <div class="slide-title reveal d2"><span class="hl">Disaggregated</span> Prefill / Decode</div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:40px; flex:1; margin-top:10px;">
+            <div class="reveal d3">
+                <div class="col-header">The Idea</div>
+                <div class="card highlight" style="margin-bottom:16px;">
+                    <div class="card-text" style="font-size:16px; line-height:1.7;">
+                        Prefill is <span class="hl">compute-bound</span> — process all input tokens at once.<br>
+                        Decode is <span class="hl-amber">memory-bound</span> — generate one token at a time.<br><br>
+                        <span class="bright">Solution: Run them on separate, optimized hardware pools.</span>
+                    </div>
+                </div>
+                <div class="flow-row">
+                    <div class="flow-box hl">Prefill nodes</div>
+                    <div class="flow-arrow">→ KV →</div>
+                    <div class="flow-box" style="border-color:rgba(240,160,48,0.3); color:var(--amber);">Decode nodes</div>
+                </div>
+                <div style="margin-top:24px;">
+                    <ul class="bullet-list">
+                        <li>Each pool sized for its bottleneck</li>
+                        <li>KV cache transferred between nodes <span class="muted">(needs 4.5 GB/s+ bandwidth)</span></li>
+                        <li>Production at Meta, LinkedIn, Mistral, HuggingFace</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="reveal d4">
+                <div class="col-header amber-border" style="color:var(--amber);">Key Players</div>
+                <div class="card highlight" style="margin-bottom:14px;">
+                    <div class="card-title" style="color:var(--teal);">NVIDIA Dynamo</div>
+                    <div class="card-text">Announced at GTC 2025. First-party framework for disaggregated LLM serving on NVIDIA GPUs.</div>
+                </div>
+                <div class="card amber-hl" style="margin-bottom:14px;">
+                    <div class="card-title" style="color:var(--amber);">llm-d (CNCF Sandbox)</div>
+                    <div class="card-text">Kubernetes-native. Backed by <span class="bright">Red Hat, Google, NVIDIA, AMD, IBM</span>. Open, vendor-neutral approach.</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Performance</div>
+                    <div style="display:flex; gap:20px; align-items:baseline; margin-top:8px;">
+                        <div>
+                            <div class="card-value" style="font-size:36px;">109%</div>
+                            <div class="card-text">throughput gain</div>
+                        </div>
+                        <div>
+                            <div class="card-value amber" style="font-size:36px;">16x</div>
+                            <div class="card-text">H100 cluster</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 13: COST ============ -->
+<section class="slide" data-slide="13">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">03</span> optimization</span><span class="page-num">13 / 18</span></div>
+    </div>
+    <div class="slide-body">
+        <div class="slide-subtitle reveal d1">Dollars & Sense</div>
+        <div class="slide-title reveal d2">Cost <span class="hl">Optimization</span> Strategies</div>
+        <div class="card-grid cols-3" style="margin-top:10px;">
+            <div class="card highlight reveal d3">
+                <div class="card-value" style="font-size:32px; margin-bottom:8px;">2-3x</div>
+                <div class="card-title">Continuous Batching</div>
+                <div class="card-text">Replace static batching with continuous (vLLM, TGI, TensorRT-LLM default). New requests join mid-batch. <span class="hl">Single biggest throughput lever.</span></div>
+                <div class="bar-track"><div class="bar-fill teal" style="--bar-w:85%;"></div></div>
+            </div>
+            <div class="card reveal d4">
+                <div class="card-value amber" style="font-size:32px; margin-bottom:8px;">60-80%</div>
+                <div class="card-title">Caching + Routing</div>
+                <div class="card-text">Semantic caching for repeated queries. Smart routing to cheapest capable model. Prefix caching (SGLang) for shared system prompts.</div>
+                <div class="bar-track"><div class="bar-fill amber" style="--bar-w:70%;"></div></div>
+            </div>
+            <div class="card reveal d5">
+                <div class="card-value" style="font-size:32px; margin-bottom:8px;">5-10x</div>
+                <div class="card-title">Batch Jobs</div>
+                <div class="card-text">Non-realtime workloads on spot GPUs with large batch sizes. 5-10x cheaper than always-on serving for offline tasks.</div>
+                <div class="bar-track"><div class="bar-fill teal" style="--bar-w:55%;"></div></div>
+            </div>
+            <div class="card reveal d6">
+                <div class="card-title">Serverless / Scale-to-Zero</div>
+                <div class="card-text">RunPod, Modal, Baseten — per-second billing with scale-to-zero. No idle GPU cost. <span class="hl">Best for bursty workloads.</span></div>
+            </div>
+            <div class="card amber-hl reveal d7">
+                <div class="card-title">Spot Instances</div>
+                <div class="card-text">60-90% cheaper than on-demand. Requires fault-tolerant serving with checkpointing. <span class="hl-amber">Works well with disaggregated arch.</span></div>
+            </div>
+            <div class="card highlight reveal d8">
+                <div class="card-label">Bottom Line</div>
+                <div class="card-text" style="font-size:16px;">
+                    Optimized 70B serving:<br>
+                    <span class="hl">$15-20/hr</span> vs <span class="hl-amber">$100+/hr</span> unoptimized
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 14: MULTIMODAL ============ -->
+<section class="slide" data-slide="14">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">04</span> trends & future</span><span class="page-num">14 / 18</span></div>
+    </div>
+    <div class="slide-body">
+        <div class="slide-subtitle reveal d1">Beyond Text</div>
+        <div class="slide-title reveal d2"><span class="hl">Multimodal</span> Inference</div>
+        <div class="two-col" style="margin-top:10px;">
+            <div class="reveal d3">
+                <div class="col-header">Leading Vision-Language Models</div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                        <div class="card-title" style="color:var(--teal);">Qwen3-VL-235B</div>
+                        <div class="badge filled">SOTA</div>
+                    </div>
+                    <div class="card-text">Alibaba's flagship VLM — top performance on visual reasoning benchmarks.</div>
+                </div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-title">InternVL3-78B</div>
+                    <div class="card-text"><span class="hl">72.2 MMMU</span> — state-of-the-art open source. Strong document understanding and chart reading.</div>
+                </div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-title">GLM-4.5V (MoE)</div>
+                    <div class="card-text">106B total, <span class="hl-amber">12B active</span> — mixture-of-experts architecture dramatically reduces inference cost.</div>
+                </div>
+            </div>
+            <div class="reveal d4">
+                <div class="col-header amber-border" style="color:var(--amber);">MoE for Efficiency</div>
+                <div class="card amber-hl" style="margin-bottom:14px;">
+                    <div class="card-title">DeepSeek-VL2 (MoE)</div>
+                    <div class="card-text"><span class="hl-amber">50-70% latency reduction</span> vs dense models of equivalent quality. Only a fraction of parameters activated per token.</div>
+                </div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-title">Phi-4-Multimodal</div>
+                    <div class="card-text"><span class="hl">Sub-100ms</span> on NVIDIA Jetson Orin. Proves multimodal inference is feasible at the edge.</div>
+                </div>
+                <div class="card highlight">
+                    <div class="card-label">Trend</div>
+                    <div class="card-text" style="font-size:15px;">Inference engines adding native multimodal support. vLLM, SGLang, and TGI all handle vision-language models in 2026. <span class="hl">The serving stack is converging.</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 15: EDGE ============ -->
+<section class="slide" data-slide="15">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">04</span> trends & future</span><span class="page-num">15 / 18</span></div>
+    </div>
+    <div class="slide-body">
+        <div class="slide-subtitle reveal d1">Inference Everywhere</div>
+        <div class="slide-title reveal d2"><span class="hl">Edge</span> & On-Device Inference</div>
+        <div class="card-grid cols-3" style="margin-top:10px;">
+            <div class="card highlight reveal d3">
+                <div class="card-value" style="font-size:42px; margin-bottom:10px;">$35</div>
+                <div class="card-title">Raspberry Pi 4 Runs LLMs</div>
+                <div class="card-text">llama.cpp on 4GB RAM. <span class="hl">68.66% size reduction</span> via 4-bit GGUF quantization. March 2026: first $35 device runs a legitimate reasoning LLM.</div>
+                <div class="card-footer">The accessibility milestone</div>
+            </div>
+            <div class="card reveal d4">
+                <div class="card-title">GGUF: The Edge Format</div>
+                <div class="card-text">llama.cpp's GGUF is now the <span class="hl">lingua franca</span> for quantized models on HuggingFace. Single-file, self-describing, works on any hardware.<br><br><span class="muted">CPU, Apple Metal, CUDA, Vulkan</span></div>
+                <div class="card-footer">Universal compatibility</div>
+            </div>
+            <div class="card amber-hl reveal d5">
+                <div class="card-title" style="color:var(--amber);">Phi-4 on Jetson Orin</div>
+                <div class="card-text">Microsoft's Phi-4-Multimodal achieves <span class="hl-amber">sub-100ms inference</span> on NVIDIA's edge hardware. Vision + language at the edge is real.</div>
+                <div class="card-footer">Multimodal at the edge</div>
+            </div>
+        </div>
+        <div class="reveal d6" style="margin-top:24px;">
+            <div class="card" style="padding:20px 28px;">
+                <div style="display:flex; align-items:center; gap:40px;">
+                    <div>
+                        <div class="card-label">Why Edge Matters</div>
+                        <div class="card-text" style="font-size:15px;">Privacy (data stays local) · Latency (no round trip) · Cost (no cloud GPU bills) · Offline capability · Regulatory compliance</div>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-shrink:0;">
+                        <span class="badge">Privacy</span>
+                        <span class="badge">Latency</span>
+                        <span class="badge amber">Cost</span>
+                        <span class="badge">Offline</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 16: API STANDARDS ============ -->
+<section class="slide" data-slide="16">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">04</span> trends & future</span><span class="page-num">16 / 18</span></div>
+    </div>
+    <div class="slide-body">
+        <div class="slide-subtitle reveal d1">Convergence</div>
+        <div class="slide-title reveal d2">Standardization: <span class="hl">OpenAI-Compatible API</span></div>
+        <div class="two-col" style="margin-top:10px;">
+            <div class="reveal d3">
+                <div class="col-header">De Facto Standard</div>
+                <ul class="bullet-list">
+                    <li><span class="bright">One API format</span> across 100+ providers and engines</li>
+                    <li>/v1/chat/completions, /v1/embeddings, /v1/completions</li>
+                    <li>Tool calling, streaming, structured output support</li>
+                    <li>AWS SageMaker added OpenAI-compatible endpoints in 2026</li>
+                </ul>
+                <div class="card highlight" style="margin-top:20px;">
+                    <div class="card-title" style="color:var(--teal);">LiteLLM</div>
+                    <div class="card-text">Unified proxy — call <span class="hl">100+ providers</span> through one interface. Load balancing, fallbacks, cost tracking built in.</div>
+                </div>
+            </div>
+            <div class="reveal d4">
+                <div class="col-header amber-border" style="color:var(--amber);">Who Supports It</div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-label">Self-Hosted Engines</div>
+                    <div class="card-text" style="font-size:15px; line-height:1.8;">
+                        <span class="hl">vLLM</span> · <span class="hl">SGLang</span> · <span class="bright">TGI</span> · <span class="bright">BentoML</span><br>
+                        <span class="bright">LocalAI</span> · <span class="bright">LM Studio</span> · <span class="bright">Ollama</span>
+                    </div>
+                </div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-label">Hosted Platforms</div>
+                    <div class="card-text" style="font-size:15px; line-height:1.8;">
+                        <span class="hl-amber">Together AI</span> · <span class="hl-amber">Fireworks</span> · <span class="bright">Groq</span><br>
+                        <span class="bright">DeepInfra</span> · <span class="bright">OpenRouter</span> · <span class="bright">Novita</span>
+                    </div>
+                </div>
+                <div class="card amber-hl">
+                    <div class="card-label">Impact</div>
+                    <div class="card-text" style="font-size:15px;">Zero lock-in. Swap providers with a <span class="hl-amber">one-line config change</span>. Migrate from cloud to self-hosted seamlessly.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 17: TIMELINE ============ -->
+<section class="slide" data-slide="17">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">04</span> trends & future</span><span class="page-num">17 / 18</span></div>
+    </div>
+    <div class="slide-body">
+        <div class="slide-subtitle reveal d1">Evolution</div>
+        <div class="slide-title reveal d2">AI Inference <span class="hl">Timeline</span></div>
+        <div class="timeline-track reveal d3">
+            <div class="timeline-item reveal d3">
+                <div class="timeline-year">2022</div>
+                <div class="timeline-dot"></div>
+                <div class="timeline-text">ChatGPT launches.<br>Inference demand<br>explodes overnight.</div>
+            </div>
+            <div class="timeline-item reveal d4">
+                <div class="timeline-year">2023</div>
+                <div class="timeline-dot"></div>
+                <div class="timeline-text">vLLM introduces<br>PagedAttention.<br>Continuous batching<br>becomes standard.</div>
+            </div>
+            <div class="timeline-item reveal d5">
+                <div class="timeline-year amber">2024</div>
+                <div class="timeline-dot amber"></div>
+                <div class="timeline-text">FP8 quantization.<br>Speculative decoding<br>goes production.<br>SGLang emerges.</div>
+            </div>
+            <div class="timeline-item reveal d6">
+                <div class="timeline-year">2025</div>
+                <div class="timeline-dot"></div>
+                <div class="timeline-text">NVIDIA Dynamo (GTC).<br>Disaggregated serving.<br>Blackwell ships.<br>AMD MI350X announced.</div>
+            </div>
+            <div class="timeline-item reveal d7">
+                <div class="timeline-year amber">2026</div>
+                <div class="timeline-dot amber"></div>
+                <div class="timeline-text">llm-d enters CNCF.<br>FP8 KV cache default.<br>Edge LLMs on $35 devices.<br>Inference = 67% compute.</div>
+            </div>
+        </div>
+        <div class="reveal d8" style="margin-top: auto;">
+            <div class="card" style="padding:18px 28px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div class="card-label" style="margin-bottom:4px;">Looking Ahead — 2027</div>
+                        <div class="card-text" style="font-size:15px;">FP4 on Blackwell · Cross-vendor disaggregation · On-device multimodal · Token-level pricing convergence</div>
+                    </div>
+                    <div class="badge filled" style="font-size:13px; padding:6px 18px; flex-shrink:0;">What's Next</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SLIDE 18: TAKEAWAYS ============ -->
+<section class="slide" data-slide="18">
+    <div class="slide-chrome"><div class="accent-bar"></div>
+        <div class="slide-header"><span class="section-label"><span class="hl">></span> summary</span><span class="page-num">18 / 18</span></div>
+    </div>
+    <div class="slide-body" style="justify-content:center;">
+        <div class="slide-subtitle reveal d1">Wrap-Up</div>
+        <div class="slide-title reveal d2" style="font-size:56px;">Key <span class="hl">Takeaways</span></div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-top:30px;">
+            <div class="card highlight reveal d3">
+                <div class="card-value" style="font-size:28px; margin-bottom:8px;">01</div>
+                <div class="card-text" style="font-size:16px; line-height:1.6;"><span class="bright">Inference dominates AI compute (67%).</span> Optimization has become as important as model training.</div>
+            </div>
+            <div class="card reveal d4">
+                <div class="card-value amber" style="font-size:28px; margin-bottom:8px;">02</div>
+                <div class="card-text" style="font-size:16px; line-height:1.6;"><span class="bright">vLLM is the production default.</span> SGLang wins on prefix-heavy workloads. TensorRT-LLM for max throughput on NVIDIA.</div>
+            </div>
+            <div class="card reveal d5">
+                <div class="card-value" style="font-size:28px; margin-bottom:8px;">03</div>
+                <div class="card-text" style="font-size:16px; line-height:1.6;"><span class="bright">Disaggregated serving is the biggest architecture shift</span> since continuous batching — separate prefill and decode for 2x+ throughput.</div>
+            </div>
+            <div class="card amber-hl reveal d6">
+                <div class="card-value amber" style="font-size:28px; margin-bottom:8px;">04</div>
+                <div class="card-text" style="font-size:16px; line-height:1.6;"><span class="bright">Custom silicon delivers 10x+ throughput</span> (Cerebras, Groq) but with ecosystem lock-in. NVIDIA keeps 80% market share.</div>
+            </div>
+            <div class="card highlight reveal d7" style="grid-column: 1 / -1;">
+                <div class="card-value" style="font-size:28px; margin-bottom:8px;">05</div>
+                <div class="card-text" style="font-size:16px; line-height:1.6;"><span class="bright">Edge inference is no longer aspirational — it's production.</span> LLMs run on $35 Raspberry Pis, multimodal models hit sub-100ms on edge GPUs. OpenAI-compatible API means zero lock-in across 100+ providers.</div>
+            </div>
+        </div>
+        <div class="reveal d8" style="margin-top:30px; text-align:center;">
+            <span class="meta-label" style="font-size:16px; letter-spacing:0.2em; color:var(--teal);">Thank You</span>
+        </div>
+    </div>
+</section>
+
+</main>
+</div>
+
+<!-- Edit mode UI -->
+<div class="edit-hotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Edit mode (E)">&#9998;</button>
+<div class="save-toast" id="saveToast">Changes saved to localStorage</div>
+
+<script>
+/* ===========================================
+   SLIDE PRESENTATION CONTROLLER
+   =========================================== */
+class SlidePresentation {
+    constructor() {
+        this.slides = document.querySelectorAll('.slide');
+        this.current = 0;
+        this.stage = document.getElementById('deckStage');
+        this.total = this.slides.length;
+        this.scaling();
+        this.keyboard();
+        this.touch();
+        this.wheel();
+        this.show(0);
+    }
+
+    scaling() {
+        const fit = () => {
+            const f = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+            const x = (window.innerWidth - 1920 * f) / 2;
+            const y = (window.innerHeight - 1080 * f) / 2;
+            this.stage.style.transform = `translate(${x}px, ${y}px) scale(${f})`;
+        };
+        fit();
+        window.addEventListener('resize', fit);
+    }
+
+    keyboard() {
+        document.addEventListener('keydown', e => {
+            if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') return;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' || e.key === 'PageDown') {
+                e.preventDefault(); this.next();
+            }
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+                e.preventDefault(); this.prev();
+            }
+            if (e.key === 'Home') { e.preventDefault(); this.show(0); }
+            if (e.key === 'End') { e.preventDefault(); this.show(this.total - 1); }
+        });
+    }
+
+    touch() {
+        let sx = 0, sy = 0;
+        this.stage.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+        this.stage.addEventListener('touchend', e => {
+            const dx = e.changedTouches[0].clientX - sx;
+            const dy = e.changedTouches[0].clientY - sy;
+            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+                dx < 0 ? this.next() : this.prev();
+            }
+        }, { passive: true });
+    }
+
+    wheel() {
+        let last = 0;
+        window.addEventListener('wheel', e => {
+            const now = Date.now();
+            if (now - last < 600) return;
+            last = now;
+            e.deltaY > 0 ? this.next() : this.prev();
+        }, { passive: true });
+    }
+
+    show(i) {
+        this.current = Math.max(0, Math.min(i, this.total - 1));
+        this.slides.forEach((s, idx) => {
+            const active = idx === this.current;
+            s.classList.toggle('active', active);
+            s.classList.toggle('visible', active);
+        });
+    }
+
+    next() { this.show(this.current + 1); }
+    prev() { this.show(this.current - 1); }
+}
+
+/* ===========================================
+   INLINE EDITING
+   =========================================== */
+class InlineEditor {
+    constructor() {
+        this.isActive = false;
+        this.toggle = document.getElementById('editToggle');
+        this.toast = document.getElementById('saveToast');
+        this.editableSelectors = '.slide-title, .slide-subtitle, .card-title, .card-text, .card-value, .card-label, .card-footer, .title-main, .title-sub, .title-tag, .col-header, .timeline-year, .timeline-text, .section-name, .section-desc, .bullet-list li, .data-table td, .meta-label, .badge, .flow-box';
+        this.setup();
+        this.loadSaved();
+    }
+
+    setup() {
+        this.toggle.addEventListener('click', () => this.toggleEdit());
+
+        const hz = document.querySelector('.edit-hotzone');
+        let hideT = null;
+        hz.addEventListener('mouseenter', () => { clearTimeout(hideT); this.toggle.classList.add('show'); });
+        hz.addEventListener('mouseleave', () => { hideT = setTimeout(() => { if (!this.isActive) this.toggle.classList.remove('show'); }, 400); });
+        this.toggle.addEventListener('mouseenter', () => clearTimeout(hideT));
+        this.toggle.addEventListener('mouseleave', () => { hideT = setTimeout(() => { if (!this.isActive) this.toggle.classList.remove('show'); }, 400); });
+        hz.addEventListener('click', () => this.toggleEdit());
+
+        document.addEventListener('keydown', e => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) this.toggleEdit();
+            if (e.ctrlKey && e.key === 's' && this.isActive) { e.preventDefault(); this.save(); }
+        });
+    }
+
+    toggleEdit() {
+        this.isActive = !this.isActive;
+        this.toggle.classList.toggle('active', this.isActive);
+        document.body.classList.toggle('editing-active', this.isActive);
+        document.querySelectorAll(this.editableSelectors).forEach(el => {
+            el.setAttribute('contenteditable', this.isActive);
+        });
+        if (!this.isActive) this.save();
+    }
+
+    save() {
+        const key = 'slides_' + document.title;
+        const data = {};
+        this.slides = document.querySelectorAll('.slide');
+        this.slides.forEach((s, i) => { data[i] = s.innerHTML; });
+        localStorage.setItem(key, JSON.stringify(data));
+        this.showToast();
+    }
+
+    loadSaved() {
+        const key = 'slides_' + document.title;
+        const raw = localStorage.getItem(key);
+        if (!raw) return;
+        try {
+            const data = JSON.parse(raw);
+            document.querySelectorAll('.slide').forEach((s, i) => {
+                if (data[i]) s.innerHTML = data[i];
+            });
+        } catch (e) { /* ignore */ }
+    }
+
+    showToast() {
+        this.toast.classList.add('show');
+        setTimeout(() => this.toast.classList.remove('show'), 2000);
+    }
+}
+
+const deck = new SlidePresentation();
+const editor = new InlineEditor();
+</script>
+</body>
+</html>
