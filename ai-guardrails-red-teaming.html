@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Guardrails & Red Teaming</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Nunito:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* === CSS CUSTOM PROPERTIES === */
+:root {
+    --stage-bg: #1a1714;
+    --cream: #F7F3ED;
+    --cream-alt: #EDE8DF;
+    --ink: #1a1714;
+    --crimson: #C41E3A;
+    --crimson-dim: rgba(196, 30, 58, 0.08);
+    --crimson-border: rgba(196, 30, 58, 0.2);
+    --warm-gray: #8a857d;
+    --warm-gray-light: #b0aaa2;
+    --border: rgba(26, 23, 20, 0.1);
+    --border-dark: rgba(247, 243, 237, 0.1);
+    --font-display: 'Archivo', sans-serif;
+    --font-body: 'Nunito', sans-serif;
+    --font-mono: 'Fira Code', monospace;
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================
+   FIXED 16:9 STAGE: MANDATORY BASE STYLES
+   =========================================== */
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--stage-bg); }
+.deck-viewport { position: fixed; inset: 0; overflow: hidden; background: var(--stage-bg); }
+.deck-stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; transform-origin: 0 0; background: var(--cream); }
+.slide { position: absolute; inset: 0; width: 1920px; height: 1080px; overflow: hidden; display: block; visibility: hidden; opacity: 0; pointer-events: none; background: var(--cream); }
+.slide.active, .slide.visible { visibility: visible; opacity: 1; pointer-events: auto; z-index: 1; }
+img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+.deck-controls { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 1000; }
+@media print {
+    html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+    .deck-viewport { position: static; overflow: visible; background: #fff; }
+    .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+    .slide { position: relative; display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important; width: 1920px; height: 1080px; break-after: page; }
+    .slide:last-child { break-after: auto; }
+    .deck-controls { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+}
+
+/* === PAPER TEXTURE === */
+.slide::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    z-index: 0;
+    pointer-events: none;
+}
+.slide.dark { background: var(--ink); }
+.slide.dark::before { opacity: 0; }
+
+/* === SLIDE CHROME === */
+.slide-chrome {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+}
+.slide-header {
+    position: absolute;
+    top: 40px;
+    left: 72px;
+    right: 72px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+}
+.dark .slide-header { border-bottom-color: var(--border-dark); }
+.slide-header .sec-label {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--warm-gray);
+}
+.dark .slide-header .sec-label { color: rgba(247,243,237,0.4); }
+.slide-header .sec-label .cr { color: var(--crimson); }
+.slide-header .pg {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    color: var(--warm-gray);
+}
+.dark .slide-header .pg { color: rgba(247,243,237,0.35); }
+
+/* === REVEAL ANIMATIONS === */
+.reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo);
+}
+.reveal-left {
+    opacity: 0;
+    transform: translateX(-24px);
+    transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo);
+}
+.reveal-right {
+    opacity: 0;
+    transform: translateX(24px);
+    transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo);
+}
+.slide.visible .reveal,
+.slide.visible .reveal-left,
+.slide.visible .reveal-right { opacity: 1; transform: none; }
+.d1 { transition-delay: 0.1s !important; }
+.d2 { transition-delay: 0.2s !important; }
+.d3 { transition-delay: 0.3s !important; }
+.d4 { transition-delay: 0.4s !important; }
+.d5 { transition-delay: 0.5s !important; }
+.d6 { transition-delay: 0.6s !important; }
+.d7 { transition-delay: 0.7s !important; }
+.d8 { transition-delay: 0.8s !important; }
+.d9 { transition-delay: 0.9s !important; }
+
+/* === CONTENT CONTAINERS === */
+.slide-body {
+    position: relative;
+    z-index: 2;
+    padding: 100px 72px 52px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+.slide-kicker {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    color: var(--crimson);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+.slide-title {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 52px;
+    color: var(--ink);
+    line-height: 1.12;
+    margin-bottom: 36px;
+}
+.slide-title .cr { color: var(--crimson); }
+.dark .slide-title { color: var(--cream); }
+
+/* Crimson rule accent */
+.cr-rule {
+    width: 80px;
+    height: 3px;
+    background: var(--crimson);
+    margin-bottom: 28px;
+}
+
+/* === CARDS === */
+.card-grid {
+    display: grid;
+    gap: 20px;
+    flex: 1;
+}
+.card-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+.card-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.card-grid.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.card-grid.cols-5 { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; }
+
+.card {
+    border: 1px solid var(--border);
+    padding: 34px;
+    display: flex;
+    flex-direction: column;
+}
+.card.dark-card { background: var(--ink); border-color: transparent; }
+.card.crimson-card { background: var(--crimson-dim); border-color: var(--crimson-border); }
+
+.card-label {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--warm-gray);
+    margin-bottom: 10px;
+}
+.dark-card .card-label { color: rgba(247,243,237,0.35); }
+
+.card-title {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 28px;
+    color: var(--ink);
+    margin-bottom: 12px;
+    line-height: 1.2;
+}
+.dark-card .card-title { color: var(--cream); }
+.card-title .cr { color: var(--crimson); }
+
+.card-text {
+    font-family: var(--font-body);
+    font-size: 20px;
+    color: var(--warm-gray);
+    line-height: 1.6;
+    flex: 1;
+}
+.dark-card .card-text { color: rgba(247,243,237,0.5); }
+.card-text .bright { color: var(--ink); font-weight: 600; }
+.card-text .cr { color: var(--crimson); font-weight: 600; }
+.dark-card .card-text .bright { color: var(--cream); }
+
+.card-value {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 44px;
+    color: var(--crimson);
+    line-height: 1.1;
+}
+.card-value.ink { color: var(--ink); }
+.card-value.small { font-size: 32px; }
+.dark-card .card-value.ink { color: var(--cream); }
+
+.card-footer {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    color: var(--warm-gray);
+}
+.dark-card .card-footer { border-top-color: var(--border-dark); color: rgba(247,243,237,0.3); }
+
+/* === BULLET LIST === */
+.bullet-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+.bullet-list li {
+    font-family: var(--font-body);
+    font-size: 24px;
+    line-height: 1.55;
+    color: var(--ink);
+    padding-left: 32px;
+    position: relative;
+}
+.dark .bullet-list li { color: var(--cream); }
+.bullet-list li::before {
+    content: '/';
+    position: absolute;
+    left: 0;
+    color: var(--crimson);
+    font-family: var(--font-display);
+    font-weight: 900;
+}
+.bullet-list li .muted { color: var(--warm-gray); }
+.dark .bullet-list li .muted { color: rgba(247,243,237,0.4); }
+
+/* === TWO COLUMN === */
+.two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    flex: 1;
+}
+.col-header {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 32px;
+    color: var(--ink);
+    margin-bottom: 22px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--border);
+}
+.col-header.cr-border { border-bottom-color: var(--crimson-border); }
+.dark .col-header { color: var(--cream); border-bottom-color: var(--border-dark); }
+
+/* === TABLE === */
+.data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.data-table th {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--crimson);
+    text-align: left;
+    padding: 16px 18px;
+    border-bottom: 2px solid var(--border);
+    font-weight: 500;
+}
+.data-table td {
+    font-family: var(--font-body);
+    padding: 16px 18px;
+    color: var(--ink);
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    line-height: 1.5;
+    font-size: 18px;
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table .muted { color: var(--warm-gray); }
+.data-table .cr { color: var(--crimson); font-weight: 600; }
+
+/* === BADGE === */
+.badge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border: 1px solid var(--border);
+    color: var(--warm-gray);
+    margin-right: 8px;
+    margin-bottom: 8px;
+}
+.badge.cr { border-color: var(--crimson-border); color: var(--crimson); }
+.badge.filled { background: var(--crimson); color: #fff; border-color: var(--crimson); }
+.badge.dark-filled { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+
+/* === FLOW DIAGRAM === */
+.flow-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+.flow-box {
+    font-family: var(--font-mono);
+    font-size: 19px;
+    padding: 14px 24px;
+    border: 1px solid var(--border);
+    color: var(--ink);
+    white-space: nowrap;
+}
+.flow-box.cr { border-color: var(--crimson-border); background: var(--crimson-dim); color: var(--crimson); }
+.flow-arrow {
+    font-family: var(--font-mono);
+    color: var(--warm-gray);
+    font-size: 18px;
+}
+
+/* === SPLIT LAYOUT (cream left, dark right) === */
+.split-layout {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 480px;
+    grid-template-rows: auto 1fr auto;
+}
+.split-top {
+    grid-column: 1 / -1;
+    padding: 40px 72px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+}
+.split-left {
+    padding: 36px 60px 36px 72px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.split-right {
+    background: var(--ink);
+    padding: 36px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 20px;
+}
+.split-bottom {
+    grid-column: 1 / -1;
+    padding: 14px 72px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+}
+
+/* Dark panel stat block */
+.stat-block {
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border-dark);
+}
+.stat-block:last-child { border-bottom: none; padding-bottom: 0; }
+.stat-label {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(247,243,237,0.35);
+    margin-bottom: 8px;
+}
+.stat-value {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 38px;
+    color: var(--cream);
+    line-height: 1.1;
+}
+.stat-value .cr { color: var(--crimson); }
+.stat-note {
+    font-family: var(--font-body);
+    font-size: 16px;
+    color: rgba(247,243,237,0.3);
+    margin-top: 5px;
+}
+
+/* === TIMELINE === */
+.timeline-track {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 20px;
+    flex: 1;
+    align-items: flex-start;
+    margin-top: 24px;
+}
+.timeline-track::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--ink), var(--crimson));
+    opacity: 0.2;
+}
+.timeline-item {
+    position: relative;
+    width: 260px;
+    text-align: left;
+}
+.timeline-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--ink);
+    margin-bottom: 16px;
+    position: relative;
+    z-index: 1;
+}
+.timeline-dot.cr { background: var(--crimson); }
+.timeline-year {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 24px;
+    color: var(--ink);
+    margin-bottom: 6px;
+}
+.timeline-year.cr { color: var(--crimson); }
+.timeline-text {
+    font-family: var(--font-body);
+    font-size: 18px;
+    color: var(--warm-gray);
+    line-height: 1.5;
+}
+
+/* === SECTION DIVIDER (dark) === */
+.section-center {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+.section-num {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 160px;
+    color: var(--crimson);
+    opacity: 0.12;
+    line-height: 1;
+    margin-bottom: -20px;
+}
+.section-name {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 60px;
+    color: var(--cream);
+    line-height: 1.15;
+}
+.section-desc {
+    font-family: var(--font-body);
+    font-size: 20px;
+    color: rgba(247,243,237,0.4);
+    margin-top: 16px;
+}
+
+/* === EDIT MODE === */
+.edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+.edit-toggle {
+    position: fixed; top: 18px; left: 18px;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: rgba(247,243,237,0.95);
+    color: var(--warm-gray);
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 10001;
+}
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+.edit-toggle.active { border-color: var(--crimson); color: var(--crimson); }
+.editing-active [contenteditable="true"] { outline: 1px dashed var(--crimson-border); cursor: text; }
+.save-toast {
+    position: fixed; bottom: 30px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    font-family: var(--font-mono); font-size: 13px;
+    color: var(--crimson); background: var(--cream);
+    border: 1px solid var(--crimson-border);
+    padding: 10px 24px; border-radius: 0;
+    opacity: 0; transition: all 0.3s ease; z-index: 10002;
+    pointer-events: none;
+}
+.save-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+<!-- ===== SLIDE 1: TITLE ===== -->
+<section class="slide active">
+    <div class="split-layout">
+        <div class="split-top reveal d1">
+            <span class="sec-label" style="font-family:var(--font-mono);font-size:13px;letter-spacing:0.16em;text-transform:uppercase;color:var(--warm-gray);"><span class="cr" style="color:var(--crimson);">/</span> internal presentation</span>
+            <span class="sec-label" style="font-family:var(--font-mono);font-size:13px;letter-spacing:0.16em;text-transform:uppercase;color:var(--warm-gray);">july 2026</span>
+        </div>
+        <div class="split-left">
+            <div class="slide-kicker reveal d2">Trust & Safety</div>
+            <div class="slide-title reveal d3" style="font-size:80px; margin-bottom:24px;">AI Guardrails &<br><span class="cr">Red Teaming</span></div>
+            <div class="reveal d4" style="font-family:var(--font-body);font-size:21px;color:var(--warm-gray);line-height:1.6;max-width:600px;">Taxonomy, attack-defense dynamics, the tools landscape, and the Red Hat AI safety stack</div>
+            <div class="cr-rule reveal d5" style="margin-top:28px;"></div>
+        </div>
+        <div class="split-right reveal-right d4">
+            <div class="stat-block">
+                <div class="stat-label">NIST Competition 2026</div>
+                <div class="stat-value"><span class="cr">250K+</span> attacks</div>
+                <div class="stat-note">compromised all 13 frontier models</div>
+            </div>
+            <div class="stat-block">
+                <div class="stat-label">EU AI Act Penalties</div>
+                <div class="stat-value">€15M <span class="cr">or 3%</span></div>
+                <div class="stat-note">of global annual turnover</div>
+            </div>
+            <div class="stat-block">
+                <div class="stat-label">NeMo Guardrails</div>
+                <div class="stat-value"><span class="cr">GA</span> on RHOAI 3.4</div>
+                <div class="stat-note">runtime AI safety protection</div>
+            </div>
+        </div>
+        <div class="split-bottom reveal d6">
+            <div style="display:flex;gap:12px;">
+                <span class="badge cr">Guardrails</span>
+                <span class="badge">Red Teaming</span>
+                <span class="badge">Tools</span>
+                <span class="badge">Red Hat AI</span>
+            </div>
+            <span style="font-family:var(--font-mono);font-size:13px;color:var(--warm-gray);">01 <span style="color:var(--crimson);">/</span> 19</span>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 2: THE PROBLEM ===== -->
+<section class="slide">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">01</span> why it matters</span><span class="pg">02 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1">The Problem</div>
+        <div class="slide-title reveal d2">LLMs Are <span class="cr">Not</span> Traditional Software</div>
+        <div class="card-grid cols-2" style="margin-top:8px;">
+            <div class="card crimson-card reveal d3">
+                <div class="card-title"><span class="cr">Jailbreaks</span></div>
+                <div class="card-text"><span class="bright">Carefully crafted prompts bypass safety controls.</span> Crescendo attacks achieve 29-71% success rate in under 5 interactions. PAP technique hits 70%+ against single-turn defenses.</div>
+            </div>
+            <div class="card reveal d4">
+                <div class="card-title">Hallucinations & PII Leaks</div>
+                <div class="card-text"><span class="bright">Models confidently fabricate facts</span> and can inadvertently expose personal data from training sets. Traditional unit tests can't catch these failure modes.</div>
+            </div>
+            <div class="card reveal d5">
+                <div class="card-title">Toxic & Harmful Outputs</div>
+                <div class="card-text">Models can generate <span class="cr">hate speech, violent content, or dangerous instructions</span> when safety alignment is circumvented. One bad output can cause reputational and legal damage.</div>
+            </div>
+            <div class="card dark-card reveal d6">
+                <div class="card-title">The Business Risk</div>
+                <div class="card-text"><span class="bright">Unprotected AI carries reputational damage, regulatory exposure, and remediation costs</span> that far exceed prevention costs. Trust is the #1 blocker to enterprise AI adoption.</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 3: REGULATION ===== -->
+<section class="slide">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">01</span> why it matters</span><span class="pg">03 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1">Compliance Landscape</div>
+        <div class="slide-title reveal d2"><span class="cr">Regulation</span> Is Here</div>
+        <div class="two-col" style="margin-top:8px;">
+            <div class="reveal d3">
+                <div class="col-header">EU AI Act Timeline</div>
+                <div class="timeline-track" style="flex-direction:column;gap:16px;margin-top:8px;">
+                    <div style="display:flex;align-items:baseline;gap:16px;">
+                        <span class="badge dark-filled" style="min-width:100px;text-align:center;">Aug 2024</span>
+                        <span style="font-family:var(--font-body);font-size:17px;color:var(--ink);">Entered into force</span>
+                    </div>
+                    <div style="display:flex;align-items:baseline;gap:16px;">
+                        <span class="badge dark-filled" style="min-width:100px;text-align:center;">Feb 2025</span>
+                        <span style="font-family:var(--font-body);font-size:17px;color:var(--ink);">Prohibited AI practices active</span>
+                    </div>
+                    <div style="display:flex;align-items:baseline;gap:16px;">
+                        <span class="badge dark-filled" style="min-width:100px;text-align:center;">Aug 2025</span>
+                        <span style="font-family:var(--font-body);font-size:17px;color:var(--ink);">GPAI model obligations</span>
+                    </div>
+                    <div style="display:flex;align-items:baseline;gap:16px;">
+                        <span class="badge filled" style="min-width:100px;text-align:center;">Aug 2026</span>
+                        <span style="font-family:var(--font-body);font-size:17px;color:var(--crimson);font-weight:600;">General applicability</span>
+                    </div>
+                    <div style="display:flex;align-items:baseline;gap:16px;">
+                        <span class="badge cr" style="min-width:100px;text-align:center;">Dec 2027</span>
+                        <span style="font-family:var(--font-body);font-size:17px;color:var(--ink);">High-risk systems (Annex III)</span>
+                    </div>
+                </div>
+                <div class="card crimson-card" style="margin-top:20px;">
+                    <div class="card-text" style="font-size:18px;"><span class="cr">Penalties: €15M or 3% of global turnover</span> — whichever is higher</div>
+                </div>
+            </div>
+            <div class="reveal d4">
+                <div class="col-header cr-border">Other Frameworks</div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-title">NIST AI RMF</div>
+                    <div class="card-text">US risk management framework. <span class="bright">AI 100-2 E2025</span> (March 2025) provides adversarial ML taxonomy. Voluntary but widely adopted.</div>
+                </div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-title">OWASP LLM Top 10</div>
+                    <div class="card-text"><span class="bright">2025 edition</span> covers prompt injection, training data poisoning, model DoS, insecure output handling. <span class="cr">2026: Agentic AI Top 10</span> added.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">MITRE ATLAS</div>
+                    <div class="card-text">Adversarial threat landscape for AI systems. Maps <span class="bright">tactics, techniques, and procedures</span> specific to ML/AI attacks.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 4: TWO LINES OF DEFENSE ===== -->
+<section class="slide dark">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">01</span> why it matters</span><span class="pg">04 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1" style="color:var(--crimson);">Defense in Depth</div>
+        <div class="slide-title reveal d2" style="font-size:56px;">Two Lines of <span class="cr">Defense</span></div>
+        <div class="two-col" style="margin-top:8px;">
+            <div class="reveal d3">
+                <div class="col-header" style="color:var(--cream);border-bottom-color:var(--border-dark);">Red Teaming — Proactive Testing</div>
+                <ul class="bullet-list">
+                    <li><span class="bright" style="color:var(--cream);">Before deployment</span> — find weaknesses first</li>
+                    <li>Structured adversarial exercises <span class="muted">to simulate real attacks</span></li>
+                    <li>Automated + manual testing <span class="muted">across harm categories</span></li>
+                    <li>Continuous throughout lifecycle <span class="muted">— not one-time</span></li>
+                </ul>
+                <div style="margin-top:20px;display:flex;gap:8px;">
+                    <span class="badge cr">PyRIT</span>
+                    <span class="badge cr">Garak</span>
+                    <span class="badge" style="color:rgba(247,243,237,0.4);border-color:var(--border-dark);">Promptfoo</span>
+                </div>
+            </div>
+            <div class="reveal d4">
+                <div class="col-header" style="color:var(--crimson);border-bottom-color:var(--crimson-border);">Guardrails — Runtime Protection</div>
+                <ul class="bullet-list">
+                    <li><span class="bright" style="color:var(--cream);">During inference</span> — intercept harmful I/O</li>
+                    <li>Input validation <span class="muted">— block jailbreaks, PII, injection</span></li>
+                    <li>Output filtering <span class="muted">— toxicity, hallucination, grounding</span></li>
+                    <li>Programmable rules <span class="muted">— Colang DSL, policy-as-code</span></li>
+                </ul>
+                <div style="margin-top:20px;display:flex;gap:8px;">
+                    <span class="badge cr">NeMo Guardrails</span>
+                    <span class="badge cr">LlamaGuard</span>
+                    <span class="badge" style="color:rgba(247,243,237,0.4);border-color:var(--border-dark);">Granite Guardian</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 5: GUARDRAIL TAXONOMY ===== -->
+<section class="slide">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">02</span> guardrails</span><span class="pg">05 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1">Architecture</div>
+        <div class="slide-title reveal d2">Guardrail <span class="cr">Taxonomy</span></div>
+        <div class="card-grid cols-4" style="margin-top:8px;">
+            <div class="card crimson-card reveal d3">
+                <div class="card-value small" style="margin-bottom:10px;">L1</div>
+                <div class="card-title">Input Validation</div>
+                <div class="card-text">PII redaction, prompt injection detection, jailbreak blocking. <span class="cr">First line of defense</span> before the prompt reaches the model.</div>
+                <div class="card-footer">Presidio, Regex, ML classifiers</div>
+            </div>
+            <div class="card reveal d4">
+                <div class="card-value ink small" style="margin-bottom:10px;">L2</div>
+                <div class="card-title">Prompt Hardening</div>
+                <div class="card-text">System-prompt injection resistance, role anchoring. Prevents <span class="bright">context manipulation</span> and instruction override attacks.</div>
+                <div class="card-footer">Template hardening, role locks</div>
+            </div>
+            <div class="card reveal d5">
+                <div class="card-value ink small" style="margin-bottom:10px;">L3</div>
+                <div class="card-title">RAG / Retrieval Rail</div>
+                <div class="card-text">Filter poisoned or irrelevant chunks <span class="bright">before they enter context</span>. Prevents indirect prompt injection via retrieved documents.</div>
+                <div class="card-footer">Chunk validation, relevance scoring</div>
+            </div>
+            <div class="card crimson-card reveal d6">
+                <div class="card-value small" style="margin-bottom:10px;">L4</div>
+                <div class="card-title">Output Filtering</div>
+                <div class="card-text">Toxicity detection, content moderation, hallucination/groundedness checks. <span class="cr">Last line of defense</span> before response reaches the user.</div>
+                <div class="card-footer">LlamaGuard, self-check, custom</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 6: HOW GUARDRAILS WORK ===== -->
+<section class="slide">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">02</span> guardrails</span><span class="pg">06 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1">Inference Path</div>
+        <div class="slide-title reveal d2">How <span class="cr">Guardrails</span> Work</div>
+        <div class="two-col" style="margin-top:8px;">
+            <div class="reveal d3">
+                <div class="col-header">Request Flow</div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:8px;">
+                    <div class="flow-box" style="width:280px;text-align:center;">User Request</div>
+                    <div class="flow-arrow" style="transform:rotate(90deg);">→</div>
+                    <div class="flow-box cr" style="width:280px;text-align:center;">Input Rails</div>
+                    <div class="flow-arrow" style="transform:rotate(90deg);">→</div>
+                    <div class="flow-box" style="width:280px;text-align:center;">LLM Model</div>
+                    <div class="flow-arrow" style="transform:rotate(90deg);">→</div>
+                    <div class="flow-box cr" style="width:280px;text-align:center;">Output Rails</div>
+                    <div class="flow-arrow" style="transform:rotate(90deg);">→</div>
+                    <div class="flow-box" style="width:280px;text-align:center;">User</div>
+                </div>
+                <div class="card crimson-card" style="margin-top:16px;">
+                    <div class="card-text">If any rail is triggered, the request is <span class="cr">blocked or modified</span> — the harmful content never reaches the user.</div>
+                </div>
+            </div>
+            <div class="reveal d4">
+                <div class="col-header cr-border">Detection Mechanisms</div>
+                <div class="card" style="margin-bottom:12px;">
+                    <div class="card-title">Pattern Matching</div>
+                    <div class="card-text">Regex rules for SSN, credit cards, API keys, emails, phone numbers. Fast, deterministic, zero false negatives on known patterns.</div>
+                </div>
+                <div class="card" style="margin-bottom:12px;">
+                    <div class="card-title">ML Classifiers</div>
+                    <div class="card-text">Models like <span class="bright">LlamaGuard, Granite Guardian, ShieldGemma</span> classify content across harm categories with confidence scores.</div>
+                </div>
+                <div class="card" style="margin-bottom:12px;">
+                    <div class="card-title">LLM Self-Check</div>
+                    <div class="card-text">The LLM evaluates its own output against safety criteria. Flexible but adds latency and cost.</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Custom Actions</div>
+                    <div class="card-text">User-defined Python functions via <span class="cr">@action</span> decorators. Full flexibility for domain-specific rules.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 7: GUARDRAIL TOOLS ===== -->
+<section class="slide">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">02</span> guardrails</span><span class="pg">07 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1">2025-2026 Landscape</div>
+        <div class="slide-title reveal d2">Guardrail <span class="cr">Tool Landscape</span></div>
+        <div class="reveal d3" style="flex:1;overflow:hidden;margin-top:8px;">
+            <table class="data-table">
+                <thead><tr>
+                    <th style="width:18%;">Tool</th>
+                    <th style="width:12%;">Provider</th>
+                    <th style="width:12%;">Type</th>
+                    <th style="width:24%;">Key Strength</th>
+                    <th style="width:18%;">Detection</th>
+                    <th style="width:16%;">Note</th>
+                </tr></thead>
+                <tbody>
+                    <tr><td class="cr">NeMo Guardrails</td><td>NVIDIA</td><td>Open Source</td><td>Colang DSL, programmable rails</td><td>Input/Output/Dialog/RAG</td><td>6.5K GitHub stars</td></tr>
+                    <tr><td>LlamaGuard 3</td><td>Meta</td><td>Open Source</td><td>Best multi-category moderation</td><td>Content classification</td><td>8B / 1B models</td></tr>
+                    <tr><td>Granite Guardian 4.1</td><td>IBM</td><td>Open Source</td><td>Prompt injection + hallucination lead</td><td>BYOC custom judging</td><td>2B-8B sizes</td></tr>
+                    <tr><td>Model Armor</td><td>Google</td><td>Managed</td><td>Jailbreak + PII + malware detection</td><td>Input/Output filtering</td><td class="cr">New in 2026</td></tr>
+                    <tr><td>Bedrock Guardrails</td><td>AWS</td><td>Managed</td><td>99% accuracy, Automated Reasoning</td><td>6 policy types</td><td>88% harmful block rate</td></tr>
+                    <tr><td>AI Content Safety</td><td>Microsoft</td><td>Managed</td><td>Prompt Shield, custom categories</td><td>Groundedness detection</td><td>Azure integrated</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="reveal d4" style="margin-top:14px;display:flex;gap:8px;">
+            <span class="badge filled">NeMo = programmable, open</span>
+            <span class="badge cr">LlamaGuard = best classifier</span>
+            <span class="badge">Cloud = managed, lowest effort</span>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 8: COLANG ===== -->
+<section class="slide">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">02</span> guardrails</span><span class="pg">08 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1">NeMo Guardrails</div>
+        <div class="slide-title reveal d2"><span class="cr">Colang</span> — Guardrails as Code</div>
+        <div class="two-col" style="margin-top:8px;">
+            <div class="reveal d3">
+                <div class="col-header">What Is Colang?</div>
+                <ul class="bullet-list">
+                    <li><span class="bright">Domain-specific language</span> for defining conversational guardrails</li>
+                    <li>Programmable dialog flows <span class="muted">— not just static rules</span></li>
+                    <li>Define <span class="cr">what the bot should/shouldn't do</span> in natural language-like syntax</li>
+                    <li>Supports input rails, output rails, dialog rails, and retrieval rails</li>
+                </ul>
+                <div class="card crimson-card" style="margin-top:20px;">
+                    <div class="card-text" style="font-size:16px;"><span class="cr">Key advantage:</span> Guardrails are version-controlled, testable, and reviewable — just like application code.</div>
+                </div>
+            </div>
+            <div class="reveal d4">
+                <div class="col-header cr-border">6 Rail Types</div>
+                <div class="card" style="margin-bottom:10px;padding:20px;">
+                    <div class="card-text"><span class="bright">Input Rails</span> <span class="muted">— validate user messages before LLM</span></div>
+                </div>
+                <div class="card" style="margin-bottom:10px;padding:20px;">
+                    <div class="card-text"><span class="bright">Output Rails</span> <span class="muted">— filter LLM responses before user</span></div>
+                </div>
+                <div class="card" style="margin-bottom:10px;padding:20px;">
+                    <div class="card-text"><span class="bright">Dialog Rails</span> <span class="muted">— control conversation flow</span></div>
+                </div>
+                <div class="card" style="margin-bottom:10px;padding:20px;">
+                    <div class="card-text"><span class="bright">Retrieval Rails</span> <span class="muted">— filter RAG context chunks</span></div>
+                </div>
+                <div class="card" style="margin-bottom:10px;padding:20px;">
+                    <div class="card-text"><span class="bright">Topic Rails</span> <span class="muted">— keep conversations on-topic</span></div>
+                </div>
+                <div class="card crimson-card" style="padding:20px;">
+                    <div class="card-text"><span class="cr">Execution Rails</span> <span class="muted">— control tool/action invocation</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 9: WHAT IS RED TEAMING ===== -->
+<section class="slide">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">03</span> red teaming</span><span class="pg">09 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1">Definition</div>
+        <div class="slide-title reveal d2">What Is <span class="cr">AI Red Teaming</span>?</div>
+        <div class="two-col" style="margin-top:8px;">
+            <div class="reveal d3">
+                <div class="card dark-card" style="margin-bottom:20px;padding:36px;">
+                    <div class="card-text" style="font-size:22px;font-family:var(--font-display);font-weight:700;color:var(--cream);line-height:1.5;">"A structured, adversarial security exercise where you <span class="cr">deliberately try to break or exploit</span> a target to find weaknesses before real attackers do."</div>
+                    <div class="card-footer">— Red Hat AI Blog</div>
+                </div>
+                <ul class="bullet-list">
+                    <li><span class="bright">Borrowed from military/security</span> — applied to AI models</li>
+                    <li>Generate adversarial inputs across <span class="muted">harm categories</span></li>
+                    <li>Test if model produces <span class="cr">harmful, biased, or policy-violating</span> outputs</li>
+                </ul>
+            </div>
+            <div class="reveal d4">
+                <div class="col-header cr-border">Traditional vs AI Testing</div>
+                <div class="card" style="margin-bottom:14px;">
+                    <div class="card-title">Traditional Software</div>
+                    <div class="card-text">Deterministic. Known inputs → known outputs. Unit tests catch bugs. <span class="bright">Binary: works or doesn't.</span></div>
+                </div>
+                <div class="card crimson-card">
+                    <div class="card-title"><span class="cr">AI / LLM Systems</span></div>
+                    <div class="card-text">Probabilistic. Same input → different outputs. Vulnerabilities are <span class="cr">emergent and context-dependent</span>. Traditional testing completely misses these failure modes.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 10: JAILBREAK ARSENAL ===== -->
+<section class="slide">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">03</span> red teaming</span><span class="pg">10 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1">Attack Techniques</div>
+        <div class="slide-title reveal d2">The Jailbreak <span class="cr">Arsenal</span></div>
+        <div class="card-grid cols-3" style="margin-top:8px;">
+            <div class="card crimson-card reveal d3">
+                <div class="card-title"><span class="cr">Crescendo</span></div>
+                <div class="card-text">Multi-turn attack. Starts harmless, progressively steers toward prohibited content. <span class="cr">29-71% success</span> in &lt;5 interactions. Invisible to per-turn classifiers.</div>
+                <div class="card-footer">Microsoft · USENIX Security 2025</div>
+            </div>
+            <div class="card reveal d4">
+                <div class="card-title">Many-Shot</div>
+                <div class="card-text">Floods context window with hundreds of examples. <span class="bright">Pushes alignment directives out of attention window.</span> Exploits limited context focus.</div>
+                <div class="card-footer">Context window exploitation</div>
+            </div>
+            <div class="card reveal d5">
+                <div class="card-title">Skeleton Key</div>
+                <div class="card-text">Multi-step instruction sequence that <span class="bright">redefines the model's safety rules</span>. Bypassed OpenAI, Google, Anthropic, and Meta models.</div>
+                <div class="card-footer">Microsoft · June 2024</div>
+            </div>
+            <div class="card reveal d6">
+                <div class="card-title"><span class="cr">PAP</span> (Persuasive Authority)</div>
+                <div class="card-text"><span class="cr">70%+ success rate</span> against single-turn defenses. Outperformed all other prompting strategies. Uses authority and persuasion patterns.</div>
+                <div class="card-footer">2025 · Highest success rate</div>
+            </div>
+            <div class="card reveal d7">
+                <div class="card-title">DAN (Do Anything Now)</div>
+                <div class="card-text">Character-based persona bypass. Model is told to act as an unrestricted alter ego. <span class="bright">Simple but effective</span> — many variants exist.</div>
+                <div class="card-footer">The classic jailbreak family</div>
+            </div>
+            <div class="card dark-card reveal d8">
+                <div class="card-title" style="color:var(--crimson);">The Takeaway</div>
+                <div class="card-text" style="font-size:16px;"><span class="bright">No model is immune.</span> NIST 2026: 250K+ attacks compromised all 13 frontier models. Defense must be layered, continuous, and evolving.</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 11: MANUAL TO AUTOMATED ===== -->
+<section class="slide">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">03</span> red teaming</span><span class="pg">11 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1">Evolution</div>
+        <div class="slide-title reveal d2">From Manual to <span class="cr">Automated</span></div>
+        <div class="card-grid cols-3" style="margin-top:8px;">
+            <div class="card reveal d3">
+                <div class="card-value ink small" style="margin-bottom:10px;">Gen 1</div>
+                <div class="card-title">Manual Red Teaming</div>
+                <div class="card-text">Human experts craft adversarial prompts by hand. <span class="bright">High quality but doesn't scale.</span> Can't keep pace with model development speed.</div>
+                <div class="card-footer">Labor-intensive, expert-dependent</div>
+            </div>
+            <div class="card reveal d4">
+                <div class="card-value ink small" style="margin-bottom:10px;">Gen 2</div>
+                <div class="card-title">Script-Based Testing</div>
+                <div class="card-text">Pre-written attack libraries and benchmark suites. <span class="bright">Repeatable but static.</span> Attackers adapt faster than scripts are updated.</div>
+                <div class="card-footer">OWASP benchmarks, static probes</div>
+            </div>
+            <div class="card crimson-card reveal d5">
+                <div class="card-value small" style="margin-bottom:10px;">Gen 3</div>
+                <div class="card-title"><span class="cr">Automated (CART)</span></div>
+                <div class="card-text"><span class="cr">Attacker LLMs</span> generate novel attacks. Autonomous agents select strategies, compose transforms, run against targets. <span class="cr">Continuous and adaptive.</span></div>
+                <div class="card-footer">PyRIT, Garak, CI/CD integration</div>
+            </div>
+        </div>
+        <div class="card dark-card reveal d6" style="margin-top:16px;padding:24px 30px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div class="card-text" style="font-size:18px;"><span class="bright">2026 standard:</span> Continuous Automated Red Teaming (CART) — autonomous adversarial simulation integrated into CI/CD. Red teaming is now a <span style="color:var(--crimson);">regulatory checkbox</span>, not optional.</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 12: RED TEAMING TOOLS ===== -->
+<section class="slide">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">03</span> red teaming</span><span class="pg">12 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1">2025-2026</div>
+        <div class="slide-title reveal d2">Red Teaming <span class="cr">Tool Landscape</span></div>
+        <div class="card-grid cols-4" style="margin-top:8px;">
+            <div class="card crimson-card reveal d3">
+                <div class="card-title"><span class="cr">Microsoft PyRIT</span></div>
+                <div class="card-text"><span class="bright">3.6K GitHub stars.</span> "Metasploit for AI" — programmable attack campaigns. 4 abstractions: targets, converters, scorers, orchestrators.</div>
+                <div class="card-footer">Most comprehensive framework</div>
+            </div>
+            <div class="card crimson-card reveal d4">
+                <div class="card-title"><span class="cr">NVIDIA Garak</span></div>
+                <div class="card-text"><span class="bright">"Nmap for LLMs."</span> Probe-based scanner with ~100 prebuilt probes. DAN, TAP, translation attacks. Integrated in Red Hat AI.</div>
+                <div class="card-footer">Integrated in RHOAI 3.4</div>
+            </div>
+            <div class="card reveal d5">
+                <div class="card-title">Promptfoo</div>
+                <div class="card-text">50+ vulnerability types. <span class="bright">CI/CD native</span> — runs as part of deployment pipeline. YAML config, easy to adopt.</div>
+                <div class="card-footer">Best for DevOps integration</div>
+            </div>
+            <div class="card reveal d6">
+                <div class="card-title">Confident AI</div>
+                <div class="card-text">50+ vulnerabilities, 20+ attack vectors. <span class="bright">OWASP/NIST coverage</span> mapping. Continuous assessment platform.</div>
+                <div class="card-footer">Enterprise SaaS option</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 13: CONTINUOUS RED TEAMING ===== -->
+<section class="slide dark">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">03</span> red teaming</span><span class="pg">13 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1" style="color:var(--crimson);">AI Safety as Code</div>
+        <div class="slide-title reveal d2" style="font-size:54px;"><span class="cr">Continuous</span> Red Teaming</div>
+        <div class="flow-row reveal d3" style="justify-content:center;margin-top:20px;">
+            <div class="flow-box" style="color:var(--cream);border-color:var(--border-dark);">Model Update</div>
+            <div class="flow-arrow" style="color:rgba(247,243,237,0.3);">→</div>
+            <div class="flow-box cr">Auto Red Team</div>
+            <div class="flow-arrow" style="color:rgba(247,243,237,0.3);">→</div>
+            <div class="flow-box" style="color:var(--cream);border-color:var(--border-dark);">Safety Report</div>
+            <div class="flow-arrow" style="color:rgba(247,243,237,0.3);">→</div>
+            <div class="flow-box cr">Deploy / Block</div>
+            <div class="flow-arrow" style="color:rgba(247,243,237,0.3);">→</div>
+            <div class="flow-box" style="color:var(--cream);border-color:var(--border-dark);">Monitor</div>
+        </div>
+        <div class="card-grid cols-3" style="margin-top:28px;">
+            <div class="card reveal d4" style="border-color:var(--border-dark);">
+                <div class="card-title" style="color:var(--cream);">Every Deployment</div>
+                <div class="card-text">Automated adversarial testing runs on <span class="bright">every model change</span>. No manual intervention needed. Results gate deployment.</div>
+            </div>
+            <div class="card reveal d5" style="border-color:var(--border-dark);">
+                <div class="card-title" style="color:var(--cream);">Real-Time Feedback</div>
+                <div class="card-text">Safety metrics tracked continuously. <span class="bright">Regression alerts</span> when model safety degrades. Dashboards for compliance teams.</div>
+            </div>
+            <div class="card reveal d6" style="border-color:var(--crimson-border);">
+                <div class="card-title" style="color:var(--crimson);">Accessible at Scale</div>
+                <div class="card-text">Teams <span class="bright">without deep security expertise</span> can run enterprise-grade safety testing. One API call triggers the full pipeline.</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 14: RED HAT PHILOSOPHY ===== -->
+<section class="slide">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">04</span> red hat ai</span><span class="pg">14 / 24</span></div></div>
+    <div class="slide-body" style="justify-content:center;">
+        <div class="slide-kicker reveal d1">Red Hat's Approach</div>
+        <div class="slide-title reveal d2" style="font-size:56px;">Safety Cannot Be <span class="cr">Bolted On</span></div>
+        <div class="cr-rule reveal d3"></div>
+        <div class="reveal d4" style="max-width:900px;">
+            <ul class="bullet-list" style="gap:24px;">
+                <li><span class="bright">Woven into every stage</span> of the AI lifecycle — from data generation through production monitoring</li>
+                <li>Open source foundation <span class="muted">— transparent, auditable, community-driven</span></li>
+                <li>Four integrated components <span class="muted">— not four disconnected tools</span></li>
+                <li>Enterprise-scale safety <span class="cr">accessible to teams without deep security expertise</span></li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 15: SAFETY STACK ===== -->
+<section class="slide">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">04</span> red hat ai</span><span class="pg">15 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1">Integrated Stack</div>
+        <div class="slide-title reveal d2">Red Hat AI <span class="cr">Safety Stack</span></div>
+        <div class="card-grid cols-4" style="margin-top:8px;">
+            <div class="card reveal d3">
+                <div class="card-value ink small" style="margin-bottom:10px;">01</div>
+                <div class="card-title">SDG Hub</div>
+                <div class="card-text">Open source toolkit for <span class="bright">adversarial dataset generation</span>. Automated creation across harm categories with demographic/regional diversity.</div>
+                <div class="card-footer">Foundation for testing</div>
+            </div>
+            <div class="card crimson-card reveal d4">
+                <div class="card-value small" style="margin-bottom:10px;">02</div>
+                <div class="card-title"><span class="cr">NVIDIA Garak</span></div>
+                <div class="card-text">Vulnerability scanner integrated via custom harness. <span class="cr">Systematically attempts to jailbreak</span> target models with escalating attack complexity.</div>
+                <div class="card-footer">Tech Preview in RHOAI 3.4</div>
+            </div>
+            <div class="card crimson-card reveal d5">
+                <div class="card-value small" style="margin-bottom:10px;">03</div>
+                <div class="card-title"><span class="cr">NeMo Guardrails</span></div>
+                <div class="card-text"><span class="cr">Runtime protection</span> at the inference boundary. Intercepts harmful inputs/outputs before they reach end users. Colang DSL for programmable rules.</div>
+                <div class="card-footer">GA since RHOAI 3.4</div>
+            </div>
+            <div class="card reveal d6">
+                <div class="card-value ink small" style="margin-bottom:10px;">04</div>
+                <div class="card-title">EvalHub</div>
+                <div class="card-text">Open source <span class="bright">control plane for LLM evaluations</span>. Multiple backends. Full red teaming workflow triggered with a single API call.</div>
+                <div class="card-footer">Orchestration layer</div>
+            </div>
+        </div>
+        <div class="reveal d7" style="margin-top:16px;">
+            <div class="flow-row" style="justify-content:center;">
+                <div class="flow-box">SDG Hub</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box cr">Garak Scan</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box cr">NeMo Guardrails</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box">EvalHub Report</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 16: NEMO ON RHOAI ===== -->
+<section class="slide">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">04</span> red hat ai</span><span class="pg">16 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1">GA since RHOAI 3.4</div>
+        <div class="slide-title reveal d2"><span class="cr">NeMo Guardrails</span> on Red Hat AI</div>
+        <div class="two-col" style="margin-top:8px;">
+            <div class="reveal d3">
+                <div class="col-header">Architecture</div>
+                <ul class="bullet-list" style="gap:14px;">
+                    <li>Managed by <span class="bright">TrustyAI Operator</span> via CRD</li>
+                    <li>Deployed as <span class="bright">FastAPI service</span> in model namespace</li>
+                    <li>Two API endpoints available</li>
+                    <li>Supports <span class="bright">multiple replicas</span> for scalability</li>
+                    <li>Built-in <span class="bright">OpenTelemetry</span> observability</li>
+                </ul>
+                <div class="card" style="margin-top:16px;">
+                    <div class="card-label">API Endpoints</div>
+                    <div class="card-text" style="font-family:var(--font-mono);font-size:17px;">
+                        <span class="cr">/v1/guardrail/checks</span><br>
+                        <span class="muted">Validate messages without LLM response</span><br><br>
+                        <span class="cr">/v1/chat/completions</span><br>
+                        <span class="muted">Generate responses with guardrails applied</span>
+                    </div>
+                </div>
+            </div>
+            <div class="reveal d4">
+                <div class="col-header cr-border">Built-in Detectors</div>
+                <div class="card" style="margin-bottom:12px;">
+                    <div class="card-title">Presidio PII Detection</div>
+                    <div class="card-text">Email, person names, phone numbers. <span class="bright">Microsoft Presidio</span> engine built in.</div>
+                </div>
+                <div class="card" style="margin-bottom:12px;">
+                    <div class="card-title">Regex Pattern Matching</div>
+                    <div class="card-text">Passwords, secrets, API keys, SSN. Custom patterns supported.</div>
+                </div>
+                <div class="card" style="margin-bottom:12px;">
+                    <div class="card-title">Custom Python Actions</div>
+                    <div class="card-text"><span class="cr">@action</span> decorator — execute custom logic within the NeMo server pod.</div>
+                </div>
+                <div class="card crimson-card">
+                    <div class="card-title">MCP Gateway Integration</div>
+                    <div class="card-text">Enforce guardrails on <span class="cr">agentic tool calls</span> at the gateway layer. Define once, enforce consistently.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 17: NEMO ARCHITECTURE DIAGRAM (Red Hat screenshot) ===== -->
+<section class="slide" style="background:#fff;">
+    <div class="slide-chrome"><div class="slide-header" style="border-bottom-color:rgba(0,0,0,0.08);"><span class="sec-label"><span class="cr">04</span> red hat ai</span><span class="pg">17 / 24</span></div></div>
+    <div style="position:relative;z-index:2;height:100%;display:flex;align-items:center;justify-content:center;padding:80px 60px 40px;">
+        <img src="ai-guardrails-assets/nemo-architecture.png" alt="NeMo Guardrails Architecture in Red Hat AI" style="max-width:100%;max-height:100%;object-fit:contain;" class="reveal d2">
+    </div>
+</section>
+
+<!-- ===== SLIDE 18: GARAK ON RHOAI ===== -->
+<section class="slide">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">04</span> red hat ai</span><span class="pg">18 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1">Automated Risk Assessment</div>
+        <div class="slide-title reveal d2"><span class="cr">Garak</span> on Red Hat AI</div>
+        <div class="two-col" style="margin-top:8px;">
+            <div class="reveal d3">
+                <div class="col-header">Pipeline Flow</div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:4px;">
+                    <div class="flow-box" style="width:320px;text-align:center;">SDG Model</div>
+                    <div class="flow-arrow" style="transform:rotate(90deg);">→</div>
+                    <div class="flow-box cr" style="width:320px;text-align:center;">Adversarial Prompts</div>
+                    <div class="flow-arrow" style="transform:rotate(90deg);">→</div>
+                    <div class="flow-box" style="width:320px;text-align:center;">Target Model</div>
+                    <div class="flow-arrow" style="transform:rotate(90deg);">→</div>
+                    <div class="flow-box cr" style="width:320px;text-align:center;">Judge Model</div>
+                    <div class="flow-arrow" style="transform:rotate(90deg);">→</div>
+                    <div class="flow-box cr" style="width:320px;text-align:center;">Vulnerability Report</div>
+                </div>
+                <div style="margin-top:16px;">
+                    <ul class="bullet-list" style="gap:12px;">
+                        <li>Runs via <span class="bright">Kubeflow Pipelines</span> on OpenShift AI</li>
+                        <li>Results stored in <span class="bright">S3</span>, optionally logged to <span class="bright">MLflow</span></li>
+                        <li><span class="cr">One API call</span> triggers the entire pipeline</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="reveal d4">
+                <div class="col-header cr-border">Attack Strategies</div>
+                <div class="card" style="margin-bottom:10px;padding:22px;">
+                    <div class="card-text"><span class="bright">SPOIntent</span> <span class="muted">— Basic intent-based attacks with DAN prompts</span></div>
+                </div>
+                <div class="card" style="margin-bottom:10px;padding:22px;">
+                    <div class="card-text"><span class="bright">UserAugmented</span> <span class="muted">— User-context augmented attacks</span></div>
+                </div>
+                <div class="card" style="margin-bottom:10px;padding:22px;">
+                    <div class="card-text"><span class="bright">SystemAugmented</span> <span class="muted">— System-prompt augmented attacks</span></div>
+                </div>
+                <div class="card" style="margin-bottom:10px;padding:22px;">
+                    <div class="card-text"><span class="cr">TAPIntent</span> <span class="muted">— Tree of Attacks with Pruning (most sophisticated)</span></div>
+                </div>
+                <div class="card crimson-card" style="padding:22px;">
+                    <div class="card-text"><span class="cr">TranslationIntent</span> <span class="muted">— Cross-lingual attacks (e.g., to Chinese)</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 19: GARAK CORE ARCHITECTURE (CSS version) ===== -->
+<section class="slide">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">04</span> red hat ai</span><span class="pg">19 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1">"Nmap for LLMs" — Automated Security Testing & Validation</div>
+        <div class="slide-title reveal d2"><span class="cr">Garak</span>: AI Vulnerability Scanner</div>
+        <div class="card crimson-card reveal d3" style="padding:20px 28px;margin-bottom:24px;">
+            <div class="card-text" style="font-size:19px;"><span class="cr">Core Concept:</span> A modular, plugin-based framework designed to systematically probe LLMs/AI systems for security weaknesses, hallucination, and data leakage. E.g., <span class="bright">run scans of popular risk taxonomies, e.g. OWASP Top-10.</span></div>
+        </div>
+        <div class="slide-title reveal d4" style="font-size:34px;margin-bottom:20px;">Core Architecture</div>
+        <div class="reveal d5" style="display:flex;align-items:flex-start;gap:10px;justify-content:center;">
+            <div style="text-align:center;width:200px;">
+                <div style="width:70px;height:70px;border-radius:50%;background:var(--cream-alt);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px;">&#9776;</div>
+                <div style="font-family:var(--font-display);font-weight:800;font-size:22px;color:var(--crimson);margin-bottom:6px;">Generators</div>
+                <div style="font-family:var(--font-body);font-size:16px;color:var(--warm-gray);line-height:1.4;">Wraps the <span style="font-weight:700;color:var(--ink);">LLM</span> (OpenAI, HuggingFace) to handle API calls.</div>
+            </div>
+            <div style="font-size:28px;color:var(--warm-gray);padding-top:24px;">→</div>
+            <div style="text-align:center;width:200px;">
+                <div style="width:70px;height:70px;border-radius:50%;background:var(--cream-alt);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px;">&#9881;</div>
+                <div style="font-family:var(--font-display);font-weight:800;font-size:22px;color:var(--crimson);margin-bottom:6px;">Probes</div>
+                <div style="font-family:var(--font-body);font-size:16px;color:var(--warm-gray);line-height:1.4;">Generates <span style="font-weight:700;color:var(--ink);">adversarial prompts</span> to exploit weaknesses.</div>
+            </div>
+            <div style="font-size:28px;color:var(--warm-gray);padding-top:24px;">→</div>
+            <div style="text-align:center;width:200px;">
+                <div style="width:70px;height:70px;border-radius:50%;background:var(--cream-alt);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px;">&#128269;</div>
+                <div style="font-family:var(--font-display);font-weight:800;font-size:22px;color:var(--crimson);margin-bottom:6px;">Detectors</div>
+                <div style="font-family:var(--font-body);font-size:16px;color:var(--warm-gray);line-height:1.4;"><span style="font-weight:700;color:var(--ink);">Analyzes</span> outputs to see if the attack succeeded.</div>
+            </div>
+            <div style="font-size:28px;color:var(--warm-gray);padding-top:24px;">→</div>
+            <div style="text-align:center;width:200px;">
+                <div style="width:70px;height:70px;border-radius:50%;background:var(--cream-alt);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px;">&#9745;</div>
+                <div style="font-family:var(--font-display);font-weight:800;font-size:22px;color:var(--crimson);margin-bottom:6px;">Evaluators</div>
+                <div style="font-family:var(--font-body);font-size:16px;color:var(--warm-gray);line-height:1.4;">Converts detector results into <span style="font-weight:700;color:var(--ink);">pass/fail metrics</span>.</div>
+            </div>
+            <div style="font-size:28px;color:var(--warm-gray);padding-top:24px;">→</div>
+            <div style="text-align:center;width:200px;">
+                <div style="width:70px;height:70px;border-radius:50%;background:var(--cream-alt);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:28px;">&#9874;</div>
+                <div style="font-family:var(--font-display);font-weight:800;font-size:22px;color:var(--crimson);margin-bottom:6px;">Harnesses</div>
+                <div style="font-family:var(--font-body);font-size:16px;color:var(--warm-gray);line-height:1.4;">Orchestrates the entire <span style="font-weight:700;color:var(--ink);">testing workflow</span>.</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 20: GARAK REPORT (Red Hat screenshot) ===== -->
+<section class="slide" style="background:#fff;">
+    <div class="slide-chrome"><div class="slide-header" style="border-bottom-color:rgba(0,0,0,0.08);"><span class="sec-label"><span class="cr">04</span> red hat ai</span><span class="pg">20 / 24</span></div></div>
+    <div style="position:relative;z-index:2;height:100%;display:flex;align-items:center;justify-content:center;padding:80px 60px 40px;">
+        <img src="ai-guardrails-assets/garak-report.png" alt="Garak Automated Red Teaming Report" style="max-width:100%;max-height:100%;object-fit:contain;" class="reveal d2">
+    </div>
+</section>
+
+<!-- ===== SLIDE 21: EVALHUB ARCHITECTURE (Red Hat screenshot) ===== -->
+<section class="slide" style="background:#fff;">
+    <div class="slide-chrome"><div class="slide-header" style="border-bottom-color:rgba(0,0,0,0.08);"><span class="sec-label"><span class="cr">04</span> red hat ai</span><span class="pg">21 / 24</span></div></div>
+    <div style="position:relative;z-index:2;height:100%;display:flex;align-items:center;justify-content:center;padding:80px 60px 40px;">
+        <img src="ai-guardrails-assets/evalhub-architecture.png" alt="Red Hat AI EvalHub Architecture" style="max-width:100%;max-height:100%;object-fit:contain;" class="reveal d2">
+    </div>
+</section>
+
+<!-- ===== SLIDE 22: EXAMPLE IMPLEMENTATION ===== -->
+<section class="slide dark">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">04</span> red hat ai</span><span class="pg">22 / 24</span></div></div>
+    <div class="slide-body" style="justify-content:center;align-items:center;text-align:center;">
+        <div class="slide-kicker reveal d1" style="color:var(--crimson);">Hands-On</div>
+        <div class="slide-title reveal d2" style="color:var(--cream);font-size:60px;">Example <span class="cr">Implementation</span></div>
+        <div class="cr-rule reveal d3" style="margin:0 auto 32px;"></div>
+        <div class="reveal d4" style="font-family:var(--font-body);font-size:24px;color:rgba(247,243,237,0.5);max-width:800px;line-height:1.6;margin:0 auto;">A step-by-step deployment of NeMo Guardrails on Red Hat OpenShift AI — from configuration to runtime protection.</div>
+        <a href="https://github.com/Sheryl-shiyi/Nemo-guardrial-deployment" target="_blank" class="reveal d5" style="display:inline-block;margin-top:36px;font-family:var(--font-mono);font-size:20px;color:var(--crimson);border:2px solid var(--crimson);padding:18px 48px;text-decoration:none;transition:background 0.3s,color 0.3s;" onmouseover="this.style.background='var(--crimson)';this.style.color='#fff';" onmouseout="this.style.background='transparent';this.style.color='var(--crimson)';">github.com/Sheryl-shiyi/Nemo-guardrial-deployment</a>
+        <div class="reveal d6" style="margin-top:24px;display:flex;gap:12px;justify-content:center;">
+            <span class="badge" style="color:rgba(247,243,237,0.4);border-color:var(--border-dark);">NeMo Guardrails</span>
+            <span class="badge" style="color:rgba(247,243,237,0.4);border-color:var(--border-dark);">RHOAI 3.4</span>
+            <span class="badge" style="color:rgba(247,243,237,0.4);border-color:var(--border-dark);">Colang</span>
+            <span class="badge" style="color:rgba(247,243,237,0.4);border-color:var(--border-dark);">TrustyAI Operator</span>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 23: E2E ARCHITECTURE ===== -->
+<section class="slide dark">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">04</span> red hat ai</span><span class="pg">22 / 24</span></div></div>
+    <div class="slide-body">
+        <div class="slide-kicker reveal d1" style="color:var(--crimson);">End-to-End</div>
+        <div class="slide-title reveal d2" style="font-size:50px;">The Complete <span class="cr">Safety Workflow</span></div>
+        <div class="flow-row reveal d3" style="justify-content:center;margin-top:20px;">
+            <div class="flow-box" style="color:var(--cream);border-color:var(--border-dark);">Deploy Model</div>
+            <div class="flow-arrow" style="color:rgba(247,243,237,0.3);">→</div>
+            <div class="flow-box cr">Garak Scan</div>
+            <div class="flow-arrow" style="color:rgba(247,243,237,0.3);">→</div>
+            <div class="flow-box" style="color:var(--cream);border-color:var(--border-dark);">Find Vulnerabilities</div>
+            <div class="flow-arrow" style="color:rgba(247,243,237,0.3);">→</div>
+            <div class="flow-box cr">Add NeMo Guardrails</div>
+            <div class="flow-arrow" style="color:rgba(247,243,237,0.3);">→</div>
+            <div class="flow-box" style="color:var(--cream);border-color:var(--border-dark);">Verify & Monitor</div>
+        </div>
+        <div class="card-grid cols-3" style="margin-top:28px;">
+            <div class="card reveal d4" style="border-color:var(--border-dark);">
+                <div class="card-title" style="color:var(--crimson);">Test</div>
+                <div class="card-text">SDG Hub generates adversarial datasets. Garak runs automated attacks across harm categories. EvalHub produces vulnerability report.</div>
+            </div>
+            <div class="card reveal d5" style="border-color:var(--border-dark);">
+                <div class="card-title" style="color:var(--crimson);">Protect</div>
+                <div class="card-text">NeMo Guardrails deployed via TrustyAI Operator. Colang rules define safety policies. Input/output rails intercept harmful content at runtime.</div>
+            </div>
+            <div class="card reveal d6" style="border-color:var(--border-dark);">
+                <div class="card-title" style="color:var(--crimson);">Monitor</div>
+                <div class="card-text">OpenTelemetry metrics track safety events. Re-run assessments on model updates. Continuous feedback loop via AI Pipelines.</div>
+            </div>
+        </div>
+        <div class="card reveal d7" style="margin-top:20px;border-color:var(--crimson-border);padding:28px 36px;">
+            <div class="card-text" style="font-size:22px;text-align:center;"><span class="bright">"Simplicity makes enterprise-scale AI safety testing accessible to teams without deep security expertise."</span></div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 21: TAKEAWAYS ===== -->
+<section class="slide">
+    <div class="slide-chrome"><div class="slide-header"><span class="sec-label"><span class="cr">/</span> summary</span><span class="pg">23 / 24</span></div></div>
+    <div class="slide-body" style="justify-content:center;">
+        <div class="slide-kicker reveal d1">Wrap-Up</div>
+        <div class="slide-title reveal d2" style="font-size:56px;">Key <span class="cr">Takeaways</span></div>
+        <div class="cr-rule reveal d3"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px;">
+            <div class="card crimson-card reveal d3">
+                <div class="card-text" style="font-size:21px;line-height:1.6;"><span class="cr" style="font-family:var(--font-display);font-weight:900;font-size:26px;">01</span> — <span class="bright">AI safety is a regulatory requirement.</span> EU AI Act is enforced in 2026. NIST, OWASP frameworks set the bar. Non-compliance costs up to 3% of global turnover.</div>
+            </div>
+            <div class="card reveal d4">
+                <div class="card-text" style="font-size:21px;line-height:1.6;"><span class="cr" style="font-family:var(--font-display);font-weight:900;font-size:26px;">02</span> — <span class="bright">Guardrails and red teaming are complementary.</span> Red teaming finds weaknesses proactively. Guardrails protect at runtime. You need both.</div>
+            </div>
+            <div class="card reveal d5">
+                <div class="card-text" style="font-size:21px;line-height:1.6;"><span class="cr" style="font-family:var(--font-display);font-weight:900;font-size:26px;">03</span> — <span class="bright">No model is immune to jailbreaks.</span> Crescendo, PAP, Skeleton Key bypass frontier models. Defense must be layered, continuous, and evolving.</div>
+            </div>
+            <div class="card reveal d6">
+                <div class="card-text" style="font-size:21px;line-height:1.6;"><span class="cr" style="font-family:var(--font-display);font-weight:900;font-size:26px;">04</span> — <span class="bright">Red Hat AI provides an integrated safety stack.</span> SDG Hub + Garak + NeMo Guardrails + EvalHub — test, protect, monitor in one platform.</div>
+            </div>
+            <div class="card crimson-card reveal d7" style="grid-column: 1 / -1;">
+                <div class="card-text" style="font-size:21px;line-height:1.6;"><span class="cr" style="font-family:var(--font-display);font-weight:900;font-size:26px;">05</span> — <span class="bright">NeMo Guardrails is GA on RHOAI 3.4.</span> Colang DSL, Presidio PII detection, custom actions, MCP Gateway integration. Enterprise-ready, open source, production-grade.</div>
+            </div>
+        </div>
+        <div class="reveal d8" style="margin-top:24px;display:flex;gap:10px;flex-wrap:wrap;">
+            <span class="badge" style="font-size:15px;padding:8px 18px;">docs.redhat.com/rhoai/3.4/guardrails</span>
+            <span class="badge cr" style="font-size:15px;padding:8px 18px;">redhat.com/blog/ai-red-teaming</span>
+            <span class="badge" style="font-size:15px;padding:8px 18px;">github.com/NVIDIA/NeMo-Guardrails</span>
+        </div>
+    </div>
+</section>
+
+</main>
+</div>
+
+<!-- Edit mode UI -->
+<div class="edit-hotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Edit mode (E)">&#9998;</button>
+<div class="save-toast" id="saveToast">Changes saved to localStorage</div>
+
+<script>
+/* === SLIDE PRESENTATION CONTROLLER === */
+class SlidePresentation {
+    constructor() {
+        this.slides = document.querySelectorAll('.slide');
+        this.current = 0;
+        this.stage = document.getElementById('deckStage');
+        this.total = this.slides.length;
+        this.scaling();
+        this.keyboard();
+        this.touch();
+        this.wheel();
+        this.show(0);
+    }
+    scaling() {
+        const fit = () => {
+            const f = Math.min(window.innerWidth / 2420, window.innerHeight / 1080);
+            const x = (window.innerWidth - 1920 * f) / 2;
+            const y = (window.innerHeight - 1080 * f) / 2;
+            this.stage.style.transform = `translate(${x}px, ${y}px) scale(${f})`;
+        };
+        fit(); window.addEventListener('resize', fit);
+    }
+    keyboard() {
+        document.addEventListener('keydown', e => {
+            if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') return;
+            if (['ArrowRight','ArrowDown',' ','PageDown'].includes(e.key)) { e.preventDefault(); this.next(); }
+            if (['ArrowLeft','ArrowUp','PageUp'].includes(e.key)) { e.preventDefault(); this.prev(); }
+            if (e.key === 'Home') { e.preventDefault(); this.show(0); }
+            if (e.key === 'End') { e.preventDefault(); this.show(this.total - 1); }
+        });
+    }
+    touch() {
+        let sx = 0;
+        this.stage.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true });
+        this.stage.addEventListener('touchend', e => {
+            const dx = e.changedTouches[0].clientX - sx;
+            if (Math.abs(dx) > 50) dx < 0 ? this.next() : this.prev();
+        }, { passive: true });
+    }
+    wheel() {
+        let last = 0;
+        window.addEventListener('wheel', e => {
+            if (Date.now() - last < 600) return;
+            last = Date.now();
+            e.deltaY > 0 ? this.next() : this.prev();
+        }, { passive: true });
+    }
+    show(i) {
+        this.current = Math.max(0, Math.min(i, this.total - 1));
+        this.slides.forEach((s, idx) => {
+            const active = idx === this.current;
+            s.classList.toggle('active', active);
+            s.classList.toggle('visible', active);
+        });
+    }
+    next() { this.show(this.current + 1); }
+    prev() { this.show(this.current - 1); }
+}
+
+/* === INLINE EDITING === */
+class InlineEditor {
+    constructor() {
+        this.isActive = false;
+        this.toggle = document.getElementById('editToggle');
+        this.toast = document.getElementById('saveToast');
+        this.sel = '.slide-title,.slide-kicker,.card-title,.card-text,.card-value,.card-label,.card-footer,.col-header,.stat-value,.stat-label,.stat-note,.bullet-list li,.data-table td,.badge,.flow-box,.timeline-year,.timeline-text,.section-name,.section-desc';
+        this.setup(); this.loadSaved();
+    }
+    setup() {
+        this.toggle.addEventListener('click', () => this.toggleEdit());
+        const hz = document.querySelector('.edit-hotzone');
+        let ht = null;
+        hz.addEventListener('mouseenter', () => { clearTimeout(ht); this.toggle.classList.add('show'); });
+        hz.addEventListener('mouseleave', () => { ht = setTimeout(() => { if (!this.isActive) this.toggle.classList.remove('show'); }, 400); });
+        this.toggle.addEventListener('mouseenter', () => clearTimeout(ht));
+        this.toggle.addEventListener('mouseleave', () => { ht = setTimeout(() => { if (!this.isActive) this.toggle.classList.remove('show'); }, 400); });
+        hz.addEventListener('click', () => this.toggleEdit());
+        document.addEventListener('keydown', e => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) this.toggleEdit();
+            if (e.ctrlKey && e.key === 's' && this.isActive) { e.preventDefault(); this.save(); }
+        });
+    }
+    toggleEdit() {
+        this.isActive = !this.isActive;
+        this.toggle.classList.toggle('active', this.isActive);
+        document.body.classList.toggle('editing-active', this.isActive);
+        document.querySelectorAll(this.sel).forEach(el => el.setAttribute('contenteditable', this.isActive));
+        if (!this.isActive) this.save();
+    }
+    save() {
+        const key = 'slides_' + document.title;
+        const data = {};
+        document.querySelectorAll('.slide').forEach((s, i) => { data[i] = s.innerHTML; });
+        localStorage.setItem(key, JSON.stringify(data));
+        this.showToast();
+    }
+    loadSaved() {
+        const raw = localStorage.getItem('slides_' + document.title);
+        if (!raw) return;
+        try { const d = JSON.parse(raw); document.querySelectorAll('.slide').forEach((s, i) => { if (d[i]) s.innerHTML = d[i]; }); } catch(e) {}
+    }
+    showToast() { this.toast.classList.add('show'); setTimeout(() => this.toast.classList.remove('show'), 2000); }
+}
+
+const deck = new SlidePresentation();
+const editor = new InlineEditor();
+</script>
+</body>
+</html>
