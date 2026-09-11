@@ -1101,7 +1101,20 @@
                 this.setupKeyboardNav();
                 this.setupTouchNav();
                 this.setupWheelNav();
-                this.showSlide(0);
+                this.setupHashNav();
+                const startSlide = this.getSlideFromHash();
+                this.showSlide(startSlide);
+            }
+
+            getSlideFromHash() {
+                const match = location.hash.match(/^#(?:slide|page)(\d+)$/i);
+                return match ? Math.max(0, parseInt(match[1], 10) - 1) : 0;
+            }
+
+            setupHashNav() {
+                window.addEventListener('hashchange', () => {
+                    this.showSlide(this.getSlideFromHash());
+                });
             }
 
             setupStageScale() {
@@ -1165,6 +1178,10 @@
                     slide.classList.toggle('visible', isActive);
                 });
                 this.nav.textContent = `${this.currentSlide + 1} / ${this.total}`;
+                const newHash = `#slide${this.currentSlide + 1}`;
+                if (location.hash !== newHash) {
+                    history.replaceState(null, '', newHash);
+                }
             }
         }
 
