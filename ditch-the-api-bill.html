@@ -657,7 +657,7 @@ h3 { font-weight: 700; font-size: 23px; line-height: 1.2; }
       <div class="rc step" data-step="0"><span class="layer" style="color:#d0c5f4; border-color:#5e40be;">MaaS gateway</span><h3>Tiers and token limits</h3><div class="big"><span class="v" data-to="30" data-pre="&lt;">&lt;30</span><small>s</small></div><p>until Free users hit their token budget, while Pro and Max kept going on the same models.</p></div>
       <div class="rc step" data-step="1"><span class="layer" style="color:#81c784; border-color:#2e5e30;">vLLM</span><h3>One GPU, many requests</h3><div class="big"><span class="v" data-to="36">36</span></div><p>requests generating at once on one GPU, about 1,500 tokens per second in total.</p></div>
       <div class="rc step" data-step="2"><span class="layer" style="color:#e0e0e0; border-color:#555;">OpenShift AI</span><h3>Autoscaling under real load</h3><div class="big"><span class="v" data-to="20" data-pre="~">~20</span><small>s</small></div><p>from long prompts arriving to the scale-up decision: 6 queued, KV cache at 82%.</p></div>
-      <div class="rc step" data-step="3"><span class="layer" style="color:#ffe072; border-color:#7a6410;">llm-d</span><h3>Cache-aware routing</h3><div class="big"><span class="v" data-to="7">7</span>×</div><p>faster first token when the prompt is cached: 0.06 s instead of 0.43 s. Shared prompts stay on the warm replica.</p></div>
+      <div class="rc step" data-step="3"><span class="layer" style="color:#ffe072; border-color:#7a6410;">llm-d</span><h3>Cache-aware routing</h3><div class="big"><span class="v" data-to="7">7</span>×</div><p>faster first token when the prompt is cached: 0.06 s instead of 0.43 s. Each user's document stays on the replica that cached it.</p></div>
       <div class="rc step" data-step="4"><span class="layer" style="color:#e0e0e0; border-color:#555;">Gateway · cloud</span><h3>Cloud APIs and privacy</h3><div class="big"><span class="v" data-to="1">1</span></div><p>endpoint and one set of rules for self-hosted and cloud models; only routed prompts leave the network.</p></div>
     </div>
     <p class="plus step" data-step="4">And one real request, <b>traced step by step</b> through every layer.</p>
@@ -668,8 +668,8 @@ h3 { font-weight: 700; font-size: 23px; line-height: 1.2; }
       <ul>
         <li><b>&lt;30 s</b>: scene 1, short prompts at 2 per second from every user; the Free tier's per-minute budget runs out within half a minute.</li>
         <li><b>36 · ~1,500 tokens/s</b>: scene 2, Max users at 5 per second, short prompts, one A10G: 36 running, 0 queued, KV cache 4%; each answer ran at about 49 tokens/s.</li>
-        <li><b>~20 s</b>: scene 3, 2,000-token prompts nobody had sent before: the autoscaler fired after 18 to 19 s (6 queued &gt; 5, KV 82% &gt; 80%). The new replica then takes 2 to 10 minutes to load.</li>
-        <li><b>7×</b>: one user, 2,000-token prompts: 0.43 s to first token when each prompt is new, 0.06 s when they share a cached document; about 95% of shared-prompt tokens came from cache.</li>
+        <li><b>~20 s</b>: scene 3, prompts of about 1,500 tokens nobody had sent before: the autoscaler fired after 18 to 19 s (6 queued &gt; 5, KV 82% &gt; 80%). The new replica then takes 2 to 10 minutes to load.</li>
+        <li><b>7×</b>: one user, prompts of about 1,500 tokens: 0.43 s to first token when each prompt is new, 0.06 s when they share a cached document; about 95% of shared-prompt tokens came from cache.</li>
       </ul>
       <p>If today's live run showed different figures, quote those: they are the ones the audience saw.</p>
     </aside>
