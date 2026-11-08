@@ -13,3 +13,4 @@ A collection of presentations — lightweight, self-contained. You can access ea
 | `scaling-llm-wiki.html` | Scaling the LLM Wiki — From Personal Knowledge Graph to Team Intelligence | [Open](https://sheryl-shiyi.github.io/Sheryl-Slides/scaling-llm-wiki.html) |
 | `ai-guardrails-red-teaming.html` | AI Guardrails & Red Teaming | [Open](https://sheryl-shiyi.github.io/Sheryl-Slides/ai-guardrails-red-teaming.html) |
 | `retrieval-rails-results.html` | Retrieval, Rails, Results — A Guarded, Measured RAG Stack on OpenShift AI | [Open](https://sheryl-shiyi.github.io/Sheryl-Slides/retrieval-rails-results.html) |
+| `ditch-the-api-bill.html` | Ditch the API Bill — Fast, Private, and Cost-Efficient LLM Inference | [Open](https://sheryl-shiyi.github.io/Sheryl-Slides/ditch-the-api-bill.html) |
